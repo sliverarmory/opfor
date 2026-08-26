@@ -10,46 +10,6 @@ import (
 	"time"
 )
 
-func TestForkCanonicalCompatibility(t *testing.T) {
-	for _, name := range []string{
-		"ftest", "fork", "fork2", "forksubs", "connpipe", "pipeit",
-		"readb3", "matcher", "forkshare", "dataio",
-	} {
-		name := name
-		t.Run(name, func(t *testing.T) {
-			if skipCompatibilityFixtureUnderRace(name) {
-				t.Skip("canonical CPU/I/O stress fixture is covered outside race instrumentation")
-			}
-			programBytes, err := os.ReadFile(filepath.Join("testdata", "upstream", "sleep-2.1", "programs", name+".sl"))
-			if err != nil {
-				t.Fatal(err)
-			}
-			want, err := os.ReadFile(filepath.Join("testdata", "upstream", "sleep-2.1", "golden", name+".sl"))
-			if err != nil {
-				t.Fatal(err)
-			}
-			program, err := Compile(NewSource(name+".sl", programBytes))
-			if err != nil {
-				t.Fatalf("compile: %v", err)
-			}
-			var output bytes.Buffer
-			runtime, err := New(WithStdout(&output), WithStderr(&output))
-			if err != nil {
-				t.Fatal(err)
-			}
-			ctx, cancel := context.WithTimeout(context.Background(), compatibilityExecutionTimeout(10*time.Second))
-			_, err = runtime.Execute(ctx, program)
-			cancel()
-			if err != nil {
-				t.Fatalf("execute: %v\noutput:\n%s", err, output.String())
-			}
-			if !bytes.Equal(output.Bytes(), want) {
-				t.Fatalf("output mismatch\nwant:\n%s\ngot:\n%s", want, output.Bytes())
-			}
-		})
-	}
-}
-
 func TestForkWaitRepeatsResultAndTimeoutIsSoft(t *testing.T) {
 	program, err := CompileString("fork-wait.sl", `
 $handle = fork({ sleep(50); return 73; });

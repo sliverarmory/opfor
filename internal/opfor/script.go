@@ -31,6 +31,7 @@ type Script struct {
 	unloadFinalizing     bool
 	unloadDone           chan struct{}
 	unloadContext        context.Context
+	unloadContextRelease func()
 	unloadErr            error
 	unloadErrDelivered   bool
 	unloadWaiters        uint64
@@ -675,9 +676,16 @@ func (r *Runtime) Close(ctx context.Context) error {
 	// would keep the executions or finalizers required by each Close alive.
 	reentrant := hasActiveExecutionToken(ctx) || hasActiveLifecycleToken(ctx)
 	cleanupCtx := ctx
+	releaseCleanupContext := func() {}
 	if hasActiveExecutionToken(ctx) {
-		cleanupCtx = detachExecutionLeaseCancellation(ctx)
+		cleanupCtx, releaseCleanupContext = detachExecutionLeaseCancellationLease(ctx)
 	}
+	cleanupContextTransferred := false
+	defer func() {
+		if !cleanupContextTransferred {
+			releaseCleanupContext()
+		}
+	}()
 	executionDeferred, lifecycleDeferred := runtimeScriptActivity(ctx, r)
 	var recipientScript *Script
 	var deferredRecipient *scriptExecutionToken
@@ -689,7 +697,13 @@ func (r *Runtime) Close(ctx context.Context) error {
 			}
 		}
 	}
-	cleanupCtx = detachRuntimeCancellation(cleanupCtx, r)
+	if runtimeContext, releaseRuntimeContext, detached := detachRuntimeCancellationLease(cleanupCtx, r); detached {
+		// Retain the runtime-specific source before dropping the general
+		// selection; nested runtimes can otherwise make these different bridges.
+		releaseCleanupContext()
+		cleanupCtx = runtimeContext
+		releaseCleanupContext = releaseRuntimeContext
+	}
 
 	r.mu.Lock()
 	start := !r.closing
@@ -760,9 +774,11 @@ func (r *Runtime) Close(ctx context.Context) error {
 			r.requestUnload(workerCtx, scripts[index], recipient)
 		}
 		go func() {
+			defer releaseCleanupContext()
 			defer releaseCloseContext()
 			r.finishClose(workerCtx, scripts, executionDeferred, lifecycleDeferred, executionDone)
 		}()
+		cleanupContextTransferred = true
 	}
 	if reentrant {
 		return nil
@@ -1420,9 +1436,16 @@ func (r *Runtime) unload(ctx context.Context, script *Script) error {
 	token, reentrant := classifyUnloadContext(ctx, r, script)
 	executionReentrant := contextOwnsRuntimeExecution(ctx, r)
 	cleanupCtx := ctx
+	releaseCleanupContext := func() {}
 	if executionReentrant {
-		cleanupCtx = detachExecutionLeaseCancellation(ctx)
+		cleanupCtx, releaseCleanupContext = detachExecutionLeaseCancellationLease(ctx)
 	}
+	cleanupContextTransferred := false
+	defer func() {
+		if !cleanupContextTransferred {
+			releaseCleanupContext()
+		}
+	}()
 
 	var cancel context.CancelFunc
 	var uiResources []aggressorUIResource
@@ -1442,6 +1465,8 @@ func (r *Runtime) unload(ctx context.Context, script *Script) error {
 		script.active = false
 		script.unloadRequested = true
 		script.unloadContext = cleanupCtx
+		script.unloadContextRelease = releaseCleanupContext
+		cleanupContextTransferred = true
 		if token != nil && token.active.Load() {
 			script.unloadRecipient = token
 			script.unloadRecipientState = unloadRecipientReserved
@@ -1523,6 +1548,13 @@ func (r *Runtime) unload(ctx context.Context, script *Script) error {
 func (r *Runtime) finishUnload(ctx context.Context, script *Script) {
 	if r == nil || script == nil {
 		return
+	}
+	script.mu.Lock()
+	releaseUnloadCaller := script.unloadContextRelease
+	script.unloadContextRelease = nil
+	script.mu.Unlock()
+	if releaseUnloadCaller != nil {
+		defer releaseUnloadCaller()
 	}
 	ctx, releaseUnloadContext := withScriptUnloadContext(ctx, script)
 	defer releaseUnloadContext()

@@ -1274,8 +1274,9 @@ func TestNestedRuntimeInvokeDetachedAsyncPreservesImporterCancellation(t *testin
 	var runtimeInstance *Runtime
 	created, err := New(
 		WithFunction("start_detached_async", func(ctx context.Context, _ Invocation) (Value, error) {
-			taskCtx := detachExecutionLeaseCancellation(ctx)
+			taskCtx, releaseTask := detachExecutionLeaseCancellationLease(ctx)
 			go func() {
+				defer releaseTask()
 				<-inspectAsync
 				observations <- taskCtx.Err()
 				<-taskCtx.Done()
@@ -1328,11 +1329,16 @@ func TestNestedRuntimeInvokeDetachedAsyncPreservesImporterCancellation(t *testin
 }
 
 func TestNestedRuntimeInvokeDetachedAsyncPreservesHostDerivedCancellation(t *testing.T) {
-	taskPublished := make(chan context.Context, 1)
+	type publishedDetachedTask struct {
+		context context.Context
+		release func()
+	}
+	taskPublished := make(chan publishedDetachedTask, 1)
 	var runtimeInstance *Runtime
 	created, err := New(
 		WithFunction("start_host_derived_async", func(ctx context.Context, _ Invocation) (Value, error) {
-			taskPublished <- detachExecutionLeaseCancellation(ctx)
+			taskContext, releaseTask := detachExecutionLeaseCancellationLease(ctx)
+			taskPublished <- publishedDetachedTask{context: taskContext, release: releaseTask}
 			return Int(29), nil
 		}),
 		WithHost(HostFunc(func(ctx context.Context, invocation Invocation) (Value, error) {
@@ -1359,16 +1365,17 @@ func TestNestedRuntimeInvokeDetachedAsyncPreservesHostDerivedCancellation(t *tes
 		t.Fatal(err)
 	}
 
-	var taskCtx context.Context
+	var task publishedDetachedTask
 	select {
-	case taskCtx = <-taskPublished:
+	case task = <-taskPublished:
 	case <-time.After(quiescenceTestTimeout):
 		t.Fatal("timed out waiting for detached task context")
 	}
+	defer task.release()
 	select {
-	case <-taskCtx.Done():
-		if !errors.Is(taskCtx.Err(), context.Canceled) {
-			t.Fatalf("detached task error = %v, want context.Canceled", taskCtx.Err())
+	case <-task.context.Done():
+		if !errors.Is(task.context.Err(), context.Canceled) {
+			t.Fatalf("detached task error = %v, want context.Canceled", task.context.Err())
 		}
 	case <-time.After(quiescenceTestTimeout):
 		t.Fatal("Host-derived cancellation did not reach detached task")

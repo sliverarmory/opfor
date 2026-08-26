@@ -126,7 +126,7 @@ func TestSocketAttachSharesOwnedCloseCoordinator(t *testing.T) {
 	local, peer := net.Pipe()
 	t.Cleanup(func() { _ = peer.Close() })
 	connection := &closeCountingConn{Conn: local}
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancelCause(context.Background())
 	task := &sleepSocketTask{
 		handle: newIOHandle("socket-close-once", nil, nil, true, true, false),
 		ctx:    ctx,
@@ -183,7 +183,7 @@ func TestSocketAdoptionCoordinatesPreAttachLifecycleClose(t *testing.T) {
 	local, peer := net.Pipe()
 	t.Cleanup(func() { _ = peer.Close() })
 	connection := &closeCountingConn{Conn: local}
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancelCause(context.Background())
 	task := &sleepSocketTask{
 		handle: newIOHandle("socket-pre-attach-close-once", nil, nil, true, true, false),
 		ctx:    ctx,

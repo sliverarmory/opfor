@@ -3,6 +3,7 @@ package opfor
 import (
 	"context"
 	"errors"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -69,6 +70,7 @@ var errExecutionLeaseCancellation = errors.New("opfor: internal execution lease 
 type detachedScriptCancellationContext struct {
 	values       context.Context
 	cancellation context.Context
+	capture      *executionCallerCapture
 }
 
 func (ctx detachedScriptCancellationContext) Deadline() (deadline time.Time, ok bool) {
@@ -84,7 +86,192 @@ func (ctx detachedScriptCancellationContext) Err() error {
 }
 
 func (ctx detachedScriptCancellationContext) Value(key any) any {
+	if _, ownership := key.(executionCallerCaptureContextKey); ownership {
+		if ctx.capture != nil {
+			return ctx.capture
+		}
+		if ctx.cancellation != nil {
+			return ctx.cancellation.Value(key)
+		}
+		return nil
+	}
 	return ctx.values.Value(key)
+}
+
+// AfterFunc keeps context propagation on the selected cancellation source.
+// Without this method, context falls back to one goroutine per derived child
+// because values and cancellation deliberately come from different parents.
+func (ctx detachedScriptCancellationContext) AfterFunc(function func()) func() bool {
+	return context.AfterFunc(ctx.cancellation, function)
+}
+
+func (ctx detachedScriptCancellationContext) retainExecutionCaller() (func(), bool) {
+	if ctx.capture != nil {
+		return ctx.capture.retain()
+	}
+	return retainExecutionCaller(ctx.cancellation)
+}
+
+// executionCallerCapture owns the cancellation bridge which filters OPFOR's
+// private execution-lease cancellation from importer cancellation. A nested
+// asynchronous owner may retain the bridge after the synchronous execution
+// which created it returns; the last owner tears down every registration.
+type executionCallerCapture struct {
+	refs atomic.Int64
+
+	ready          chan struct{}
+	cancel         context.CancelCauseFunc
+	stopSources    []func() bool
+	stopBridge     func() bool
+	deadlineCancel context.CancelFunc
+	releaseSources func()
+	cleanupOnce    sync.Once
+}
+
+func (capture *executionCallerCapture) retain() (func(), bool) {
+	if capture == nil {
+		return func() {}, true
+	}
+	for {
+		refs := capture.refs.Load()
+		if refs == 0 {
+			return nil, false
+		}
+		if capture.refs.CompareAndSwap(refs, refs+1) {
+			return idempotentContextRelease(capture.release), true
+		}
+	}
+}
+
+func (capture *executionCallerCapture) release() {
+	if capture == nil {
+		return
+	}
+	if capture.refs.Add(-1) != 0 {
+		return
+	}
+	capture.cancelCause(errExecutionLeaseCancellation)
+}
+
+func (capture *executionCallerCapture) cancelCause(cause error) {
+	if capture == nil {
+		return
+	}
+	<-capture.ready
+	// Stop the bridge callback before canceling on the ordinary final-owner
+	// path. context.AfterFunc always starts its callback in a new goroutine;
+	// canceling first would recreate one short-lived goroutine per native call.
+	// A source/deadline cancellation which already won the race still runs the
+	// callback and shares cleanupOnce below.
+	if capture.stopBridge != nil {
+		capture.stopBridge()
+	}
+	capture.cancel(cause)
+	capture.cleanup()
+}
+
+func (capture *executionCallerCapture) cleanup() {
+	if capture == nil {
+		return
+	}
+	<-capture.ready
+	capture.cleanupOnce.Do(func() {
+		for _, stopSource := range capture.stopSources {
+			if stopSource != nil {
+				stopSource()
+			}
+		}
+		if capture.stopBridge != nil {
+			capture.stopBridge()
+		}
+		if capture.deadlineCancel != nil {
+			capture.deadlineCancel()
+		}
+		if capture.releaseSources != nil {
+			capture.releaseSources()
+		}
+	})
+}
+
+func idempotentContextRelease(release func()) func() {
+	if release == nil {
+		return func() {}
+	}
+	var once sync.Once
+	return func() {
+		once.Do(release)
+	}
+}
+
+type executionCallerRetainer interface {
+	retainExecutionCaller() (func(), bool)
+}
+
+type executionCallerCaptureContextKey struct{}
+
+func retainExecutionCaller(ctx context.Context) (func(), bool) {
+	if ctx == nil {
+		return func() {}, true
+	}
+	// Standard WithCancel/WithValue wrappers preserve Value but hide optional
+	// methods. Publish the selected cancellation capture under a private key so
+	// nested asynchronous owners can retain it through arbitrary context layers.
+	if capture, _ := ctx.Value(executionCallerCaptureContextKey{}).(*executionCallerCapture); capture != nil {
+		return capture.retain()
+	}
+	if retained, ok := ctx.(executionCallerRetainer); ok {
+		return retained.retainExecutionCaller()
+	}
+	return func() {}, true
+}
+
+func newExecutionCallerCapture(
+	values context.Context,
+	sources []context.Context,
+	releaseSources func(),
+) (context.Context, func(), context.CancelCauseFunc) {
+	if values == nil {
+		values = context.Background()
+	}
+	base := context.Background()
+	deadlineCancel := context.CancelFunc(func() {})
+	if deadline, ok := values.Deadline(); ok {
+		var cancel context.CancelFunc
+		base, cancel = context.WithDeadline(base, deadline)
+		deadlineCancel = cancel
+	}
+	bridge, cancel := context.WithCancelCause(base)
+	capture := &executionCallerCapture{
+		ready:          make(chan struct{}),
+		cancel:         cancel,
+		deadlineCancel: deadlineCancel,
+		releaseSources: idempotentContextRelease(releaseSources),
+	}
+	capture.refs.Store(1)
+	propagate := func(source context.Context) {
+		cause := context.Cause(source)
+		if cause == nil || errors.Is(cause, errExecutionLeaseCancellation) {
+			return
+		}
+		cancel(cause)
+	}
+	for _, source := range sources {
+		if source == nil {
+			continue
+		}
+		source := source
+		capture.stopSources = append(
+			capture.stopSources,
+			context.AfterFunc(source, func() { propagate(source) }),
+		)
+	}
+	capture.stopBridge = context.AfterFunc(bridge, capture.cleanup)
+	close(capture.ready)
+	return detachedScriptCancellationContext{
+		values:       context.WithoutCancel(values),
+		cancellation: bridge,
+		capture:      capture,
+	}, idempotentContextRelease(capture.release), capture.cancelCause
 }
 
 func initializeScriptExecution(script *Script) {
@@ -106,7 +293,6 @@ func (runtime *Runtime) acquireRuntimeExecution(ctx context.Context) (context.Co
 	if err := executionContextError(ctx); err != nil {
 		return ctx, nil, err
 	}
-	caller := captureExecutionCaller(ctx)
 	parent, _ := ctx.Value(runtimeExecutionContextKey{}).(*runtimeExecutionToken)
 
 	runtime.mu.Lock()
@@ -121,6 +307,7 @@ func (runtime *Runtime) acquireRuntimeExecution(ctx context.Context) (context.Co
 	runtime.executions++
 	runtimeContext := runtime.executionCtx
 	runtime.mu.Unlock()
+	caller, releaseCaller := captureExecutionCallerLease(ctx)
 
 	// Keep the execution itself coupled to every enclosing lease, but remember
 	// only the importer-owned cancellation for work which deliberately detaches
@@ -145,6 +332,7 @@ func (runtime *Runtime) acquireRuntimeExecution(ctx context.Context) (context.Co
 		}
 		stopRuntimeCancel()
 		cancel(errExecutionLeaseCancellation)
+		releaseCaller()
 		runtime.mu.Lock()
 		if runtime.executions > 0 {
 			runtime.executions--
@@ -171,7 +359,6 @@ func (script *Script) acquireExecution(ctx context.Context) (context.Context, fu
 	if err := executionContextError(ctx); err != nil {
 		return ctx, nil, err
 	}
-	caller := captureExecutionCaller(ctx)
 	parent, _ := ctx.Value(scriptExecutionContextKey{}).(*scriptExecutionToken)
 	generation := scriptGenerationFromContext(ctx, script)
 
@@ -192,6 +379,7 @@ func (script *Script) acquireExecution(ctx context.Context) (context.Context, fu
 	}
 	scriptContext := script.executionCtx
 	script.mu.Unlock()
+	caller, releaseCaller := captureExecutionCallerLease(ctx)
 
 	executionCtx, cancel := context.WithCancelCause(ctx)
 	stopScriptCancel := context.AfterFunc(scriptContext, func() {
@@ -211,6 +399,7 @@ func (script *Script) acquireExecution(ctx context.Context) (context.Context, fu
 		}
 		stopScriptCancel()
 		cancel(errExecutionLeaseCancellation)
+		releaseCaller()
 		return script.releaseExecution(token)
 	}
 	return executionCtx, release, nil
@@ -549,46 +738,25 @@ func detachScriptCancellation(ctx context.Context, token *scriptExecutionToken) 
 	}
 }
 
-// captureExecutionCaller preserves cancellation added by importer code between
-// nested OPFOR entries while filtering the private cancellation which ends an
-// enclosing execution lease. Private entries use WithCancelCause, so a child
-// context canceled explicitly by its importer remains distinguishable even if
-// the filtering callback runs after the enclosing Host has returned.
-func captureExecutionCaller(ctx context.Context) context.Context {
+// captureExecutionCallerLease preserves cancellation added by importer code
+// between nested OPFOR entries while filtering the private cancellation which
+// ends an enclosing execution lease. Its release function belongs to the
+// synchronous entry which records the caller; detached work must retain a
+// separate owner before that entry returns.
+func captureExecutionCallerLease(ctx context.Context) (context.Context, func()) {
 	if ctx == nil {
-		return context.Background()
+		return context.Background(), func() {}
 	}
 	if !hasActiveExecutionToken(ctx) {
-		return ctx
+		return ctx, func() {}
 	}
-	fallback := detachExecutionLeaseCancellation(ctx)
-
-	base := context.Background()
-	deadlineCancel := func() {}
-	if deadline, ok := ctx.Deadline(); ok {
-		var cancel context.CancelFunc
-		base, cancel = context.WithDeadline(base, deadline)
-		deadlineCancel = cancel
-	}
-	bridge, cancel := context.WithCancelCause(base)
-	propagate := func(source context.Context) {
-		cause := context.Cause(source)
-		if cause == nil || errors.Is(cause, errExecutionLeaseCancellation) {
-			return
-		}
-		cancel(cause)
-	}
-	stopCurrent := context.AfterFunc(ctx, func() { propagate(ctx) })
-	stopFallback := context.AfterFunc(fallback, func() { propagate(fallback) })
-	context.AfterFunc(bridge, func() {
-		stopCurrent()
-		stopFallback()
-		deadlineCancel()
-	})
-	return detachedScriptCancellationContext{
-		values:       context.WithoutCancel(ctx),
-		cancellation: bridge,
-	}
+	fallback, releaseFallback := detachExecutionLeaseCancellationLease(ctx)
+	captured, release, _ := newExecutionCallerCapture(
+		ctx,
+		[]context.Context{ctx, fallback},
+		releaseFallback,
+	)
+	return captured, release
 }
 
 // callbackContextSnapshot preserves the invoking context's cancellation and
@@ -625,9 +793,22 @@ func (ctx callbackContextSnapshot) Value(key any) any {
 	}
 }
 
+func (ctx callbackContextSnapshot) AfterFunc(function func()) func() bool {
+	return context.AfterFunc(ctx.Context, function)
+}
+
+func (ctx callbackContextSnapshot) retainExecutionCaller() (func(), bool) {
+	return retainExecutionCaller(ctx.Context)
+}
+
 func captureCallbackSchedulingContext(ctx context.Context) (context.Context, *executionMeter) {
-	retained := captureExecutionCaller(ctx)
+	retained, _ := captureExecutionCallerLease(ctx)
 	meter, _ := retained.Value(executionMeterKey{}).(*executionMeter)
+	// Importer dispatchers may retain the scheduling context after their method
+	// returns, and the interface has no explicit completion hook. Keep this one
+	// boundary source-owned: importer cancellation/deadline tears the bridge down,
+	// while dropping only the parent wrapper must not cancel a retained Done
+	// channel or derived child early.
 	return callbackContextSnapshot{Context: retained}, meter
 }
 
@@ -679,100 +860,162 @@ func hasActiveLifecycleToken(ctx context.Context) bool {
 	return false
 }
 
-// detachExecutionLeaseCancellation lets a runtime-owned asynchronous task
+// detachExecutionLeaseCancellationLease lets a runtime-owned asynchronous task
 // outlive the callback that created it while retaining importer cancellation,
 // deadlines, and importer-owned context values. The synchronous
 // ScriptInstance run owner is deliberately hidden. Fork, socket, and process
 // tasks register separate owner cleanup hooks, so Script unload still cancels
-// them explicitly.
-func detachExecutionLeaseCancellation(ctx context.Context) context.Context {
+// them explicitly. The returned release is idempotent and must be called after
+// the detached work no longer needs importer cancellation.
+func detachExecutionLeaseCancellationLease(ctx context.Context) (context.Context, func()) {
 	if ctx == nil {
-		return context.Background()
+		return context.Background(), func() {}
 	}
-	result := ctx
-	detached := false
-	if token, _ := ctx.Value(scriptExecutionContextKey{}).(*scriptExecutionToken); token != nil {
-		for token != nil && !token.active.Load() {
-			token = token.parent
-		}
-		if token != nil {
-			result = detachScriptCancellation(result, token)
-			detached = true
-		}
-	}
-	if token, _ := ctx.Value(runtimeExecutionContextKey{}).(*runtimeExecutionToken); token != nil {
-		for token != nil && !token.active.Load() {
-			token = token.parent
-		}
-		if token != nil && token.caller != nil {
-			result = detachedScriptCancellationContext{
-				values:       context.WithoutCancel(result),
-				cancellation: token.caller,
+	for {
+		result := ctx
+		detached := false
+		var cancellation context.Context
+		if token, _ := ctx.Value(scriptExecutionContextKey{}).(*scriptExecutionToken); token != nil {
+			for token != nil && !token.active.Load() {
+				token = token.parent
 			}
-			detached = true
-		}
-	}
-	// ScriptInstance.runScript/evaluate installs an additional private cancel
-	// context around the evaluator. A fork, socket, or process created inside
-	// that call is owned by its Script hierarchy, not by the synchronous method
-	// frame, so use the pre-frame importer cancellation captured by its token.
-	for token, _ := ctx.Value(portableScriptInstanceRunContextKey{}).(*portableScriptInstanceRunToken); token != nil; token = token.parent {
-		if token.active.Load() && token.caller != nil {
-			result = detachedScriptCancellationContext{
-				values:       context.WithoutCancel(result),
-				cancellation: token.caller,
-			}
-			detached = true
-			break
-		}
-	}
-	if !detached {
-		if ancestry, _ := ctx.Value(aggressorUICallbackAncestryContextKey{}).(*aggressorUICallbackAncestry); ancestry != nil && ancestry.active.Load() {
-			// callbackContext captured the responder-supplied context's filtered
-			// caller before hiding its raw tokens. Keep that exact cancellation
-			// source as capture's fallback after a presentation lease is canceled;
-			// in particular, a provider which deliberately supplies Background
-			// does not accidentally inherit the presenter's caller cancellation.
-			caller := ancestry.caller
-			if caller == nil {
-				caller = context.Background()
-			}
-			result = detachedScriptCancellationContext{
-				values:       context.WithoutCancel(result),
-				cancellation: caller,
+			if token != nil {
+				result = detachScriptCancellation(result, token)
+				cancellation = token.caller
+				detached = true
 			}
 		}
+		if token, _ := ctx.Value(runtimeExecutionContextKey{}).(*runtimeExecutionToken); token != nil {
+			for token != nil && !token.active.Load() {
+				token = token.parent
+			}
+			if token != nil && token.caller != nil {
+				result = detachedScriptCancellationContext{
+					values:       context.WithoutCancel(result),
+					cancellation: token.caller,
+				}
+				cancellation = token.caller
+				detached = true
+			}
+		}
+		// ScriptInstance.runScript/evaluate installs an additional private cancel
+		// context around the evaluator. A fork, socket, or process created inside
+		// that call is owned by its Script hierarchy, not by the synchronous method
+		// frame, so use the pre-frame importer cancellation captured by its token.
+		for token, _ := ctx.Value(portableScriptInstanceRunContextKey{}).(*portableScriptInstanceRunToken); token != nil; token = token.parent {
+			if token.active.Load() && token.caller != nil {
+				result = detachedScriptCancellationContext{
+					values:       context.WithoutCancel(result),
+					cancellation: token.caller,
+				}
+				cancellation = token.caller
+				detached = true
+				break
+			}
+		}
+		if !detached {
+			if ancestry, _ := ctx.Value(aggressorUICallbackAncestryContextKey{}).(*aggressorUICallbackAncestry); ancestry != nil && ancestry.active.Load() {
+				// callbackContext captured the responder-supplied context's filtered
+				// caller before hiding its raw tokens. Keep that exact cancellation
+				// source as capture's fallback after a presentation lease is canceled;
+				// in particular, a provider which deliberately supplies Background
+				// does not accidentally inherit the presenter's caller cancellation.
+				cancellation = ancestry.caller
+				if cancellation == nil {
+					cancellation = context.Background()
+				}
+				result = detachedScriptCancellationContext{
+					values:       context.WithoutCancel(result),
+					cancellation: cancellation,
+				}
+			}
+		}
+		result = withoutPortableScriptInstanceRunOwner(result)
+		if cancellation == nil {
+			release, retained := retainExecutionCaller(result)
+			if retained {
+				return result, idempotentContextRelease(release)
+			}
+			// No live token can replace an already-finalized keyed capture.
+			return result, func() {}
+		}
+		release, retained := retainExecutionCaller(cancellation)
+		if retained {
+			return result, idempotentContextRelease(release)
+		}
+		// The selected token stopped between its active check and retain. Its
+		// owner always clears active before dropping the final reference, so a
+		// fresh scan selects the still-live parent instead.
 	}
-	return withoutPortableScriptInstanceRunOwner(result)
 }
 
-// detachAsynchronousExecutionContext is the launch context for runtime-owned
+// detachAsynchronousExecutionContextLease is the launch context for
+// runtime-owned
 // asynchronous work. It retains importer cancellation, deadlines, values, and
 // the selected instruction meter while hiding evaluator, binding, include,
 // loadable-resolution, native-dispatch, UI-ancestry, lifecycle,
 // generation-cleanup, and ScriptInstance-run tokens. The new task acquires its
-// own Script execution and generation provenance.
-func detachAsynchronousExecutionContext(ctx context.Context) context.Context {
-	detached := detachExecutionLeaseCancellation(ctx)
+// own Script execution and generation provenance. Its release follows the same
+// ownership contract as detachExecutionLeaseCancellationLease.
+func detachAsynchronousExecutionContextLease(ctx context.Context) (context.Context, func()) {
+	detached, release := detachExecutionLeaseCancellationLease(ctx)
 	meter, _ := detached.Value(executionMeterKey{}).(*executionMeter)
-	return callbackContextSnapshot{Context: detached, meter: meter}
+	return callbackContextSnapshot{Context: detached, meter: meter}, release
 }
 
-func detachRuntimeCancellation(ctx context.Context, runtime *Runtime) context.Context {
-	if ctx == nil || runtime == nil {
-		return ctx
-	}
-	token, _ := ctx.Value(runtimeExecutionContextKey{}).(*runtimeExecutionToken)
-	for token != nil {
-		if token.runtime == runtime && token.active.Load() && token.caller != nil {
-			return detachedScriptCancellationContext{
-				values:       context.WithoutCancel(ctx),
-				cancellation: token.caller,
-			}
+// newAsynchronousExecutionTaskContext gives one runtime-owned worker a private
+// bridge owner. Natural worker completion releases that owner without ending a
+// descendant which retained the bridge; explicit teardown cancels them all.
+// When the final owner leaves, the bridge unregisters from its importer source
+// and releases the detached source lease synchronously.
+func newAsynchronousExecutionTaskContext(
+	ctx context.Context,
+) (context.Context, func(), context.CancelCauseFunc) {
+	detached, releaseDetached := detachAsynchronousExecutionContextLease(ctx)
+	return newExecutionCallerCapture(
+		detached,
+		[]context.Context{detached},
+		releaseDetached,
+	)
+}
+
+func cancelContextWithRelease(cancel context.CancelFunc, release func()) context.CancelFunc {
+	return idempotentContextRelease(func() {
+		if cancel != nil {
+			cancel()
 		}
-		token = token.parent
+		if release != nil {
+			release()
+		}
+	})
+}
+
+func detachRuntimeCancellationLease(ctx context.Context, runtime *Runtime) (context.Context, func(), bool) {
+	if ctx == nil || runtime == nil {
+		return ctx, func() {}, false
 	}
-	return ctx
+	for {
+		token, _ := ctx.Value(runtimeExecutionContextKey{}).(*runtimeExecutionToken)
+		for token != nil {
+			if token.runtime == runtime && token.active.Load() && token.caller != nil {
+				release, retained := retainExecutionCaller(token.caller)
+				if !retained {
+					break
+				}
+				return detachedScriptCancellationContext{
+					values:       context.WithoutCancel(ctx),
+					cancellation: token.caller,
+				}, idempotentContextRelease(release), true
+			}
+			token = token.parent
+		}
+		if token == nil {
+			return ctx, func() {}, false
+		}
+		// The matching token stopped between the liveness check and retain.
+		// Its owner clears active before releasing the final bridge reference;
+		// rescan to select another live matching ancestor, if any.
+	}
 }
 
 func withScriptUnloadContext(ctx context.Context, script *Script) (context.Context, func()) {

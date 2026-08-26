@@ -38,7 +38,7 @@ var sleepGoldenExecutionOracles = []sleepGoldenExecutionOracle{
 	{name: "expassign"}, {name: "fact"}, {name: "fe_generator"}, {name: "fe_generatordb"}, {name: "fe_ohash"}, {name: "feloc"}, {name: "feremovetest"}, {name: "fescope"},
 	{name: "femod"}, {name: "fetest"}, {name: "feprob"}, {name: "find"}, {name: "fob"}, {name: "for"}, {name: "forany"},
 	{name: "foreach"}, {name: "foreachrem"}, {name: "foreachrecurse"}, {name: "fork", timeout: 10 * time.Second}, {name: "fork2"}, {name: "forkdl", fixtureWorkingDir: true, timeout: 10 * time.Second}, {name: "forkof"}, {name: "forkshare"},
-	{name: "forksubs"}, {name: "forplay"}, {name: "fpfuncs"}, {name: "ftest"}, {name: "funchandle"}, {name: "functiondesc"},
+	{name: "forksubs"}, {name: "forplay"}, {name: "fpfuncs"}, {name: "ftest", timeout: 10 * time.Second}, {name: "funchandle"}, {name: "functiondesc"},
 	{name: "functionerr"}, {name: "genfun"}, {name: "graph"},
 	{name: "hash"}, {name: "hash2"}, {name: "hash3"}, {name: "hash4", wantRuntimeError: true},
 	{name: "hashambig"}, {name: "hashself"}, {name: "hexbites"}, {name: "hfreeze", timeout: 10 * time.Second}, {name: "hoeswarning"},

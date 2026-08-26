@@ -46,10 +46,11 @@ type sleepReadTask struct {
 	invocation Invocation
 	chunkSize  int32
 
-	ctx    context.Context
-	cancel context.CancelFunc
-	done   chan struct{}
-	once   sync.Once
+	ctx            context.Context
+	cancel         context.CancelCauseFunc
+	releaseContext func()
+	done           chan struct{}
+	once           sync.Once
 	// revoked is the logical callback-admission boundary. done closes only when
 	// run has actually returned; the two states deliberately remain distinct for
 	// an uninterruptible borrowed Read.
@@ -138,19 +139,23 @@ func (state *ioBuiltinState) startSleepReadTask(
 	if invocation.Script != 0 && (owner == nil || !owner.Active()) {
 		return ErrScriptUnloaded
 	}
-	taskContext, cancel := context.WithCancel(detachAsynchronousExecutionContext(ctx))
+	taskContext, releaseTaskContext, cancel := newAsynchronousExecutionTaskContext(ctx)
 	task := &sleepReadTask{
 		owner: owner, runtime: state.runtime, handle: handle, callback: callback,
 		invocation: invocation, chunkSize: chunkSize,
-		ctx: taskContext, cancel: cancel, done: make(chan struct{}),
+		ctx: taskContext, cancel: cancel,
+		releaseContext: releaseTaskContext,
+		done:           make(chan struct{}),
 	}
 	if owner != nil {
 		if !owner.registerReadTask(task) {
-			cancel()
+			cancel(context.Canceled)
+			task.releaseContext()
 			return ErrScriptUnloaded
 		}
 	} else if !state.runtime.registerReadTask(task) {
-		cancel()
+		cancel(context.Canceled)
+		task.releaseContext()
 		return ErrRuntimeClosed
 	}
 
@@ -382,7 +387,9 @@ func (task *sleepReadTask) complete() {
 		return
 	}
 	task.once.Do(func() {
-		task.cancel()
+		if task.releaseContext != nil {
+			task.releaseContext()
+		}
 		task.unregisterOwner()
 		close(task.done)
 	})
@@ -397,7 +404,10 @@ func (task *sleepReadTask) cancelAndClose() bool {
 	}
 	task.revoked.Store(true)
 	if task.cancel != nil {
-		task.cancel()
+		task.cancel(context.Canceled)
+	}
+	if task.releaseContext != nil {
+		task.releaseContext()
 	}
 	if channelClosed(task.done) {
 		return true

@@ -136,8 +136,10 @@ func (r *Runtime) startScriptGenerationCleanup(
 	drained <-chan struct{},
 	snapshot scriptGenerationCleanupSnapshot,
 ) {
-	cleanupCtx := withScriptGenerationCleanup(detachExecutionLeaseCancellation(ctx), generation)
+	detachedContext, releaseDetached := detachExecutionLeaseCancellationLease(ctx)
+	cleanupCtx := withScriptGenerationCleanup(detachedContext, generation)
 	go func() {
+		defer releaseDetached()
 		<-drained
 		cleanupErr := r.finishScriptGenerationCleanup(cleanupCtx, script, snapshot)
 		script.mu.Lock()

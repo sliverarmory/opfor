@@ -112,7 +112,6 @@ func (script *Script) acquireGenerationExecution(
 	if err := executionContextError(ctx); err != nil {
 		return ctx, nil, err
 	}
-	caller := captureExecutionCaller(ctx)
 	parent, _ := ctx.Value(scriptExecutionContextKey{}).(*scriptExecutionToken)
 
 	script.mu.Lock()
@@ -131,6 +130,7 @@ func (script *Script) acquireGenerationExecution(
 	scriptContext := script.executionCtx
 	generationContext := expected.context
 	script.mu.Unlock()
+	caller, releaseCaller := captureExecutionCallerLease(ctx)
 
 	executionCtx, cancel := context.WithCancelCause(ctx)
 	stopScriptCancel := context.AfterFunc(scriptContext, func() {
@@ -155,6 +155,7 @@ func (script *Script) acquireGenerationExecution(
 		stopGenerationCancel()
 		stopScriptCancel()
 		cancel(errExecutionLeaseCancellation)
+		releaseCaller()
 		return script.releaseExecution(token)
 	}
 	return executionCtx, release, nil

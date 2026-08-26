@@ -20,6 +20,7 @@ type processObject struct {
 	owner   *Script
 	runtime *Runtime
 	done    chan struct{}
+	cancel  context.CancelFunc
 
 	childOutput io.Closer
 	output      *processOutputLimits
@@ -215,7 +216,9 @@ func (state *ioBuiltinState) startProcess(ctx context.Context, owner *Script, sp
 	// Runtime for a direct Runtime.Invoke). Detach the short-lived entry lease
 	// while retaining the importer's cancellation/deadline; unload and Close
 	// explicitly destroy and join their registered processes.
-	processContext := detachAsynchronousExecutionContext(ctx)
+	processContext, releaseProcessContext := detachAsynchronousExecutionContextLease(ctx)
+	processContext, cancelProcessContext := context.WithCancel(processContext)
+	cancelProcessContext = cancelContextWithRelease(cancelProcessContext, releaseProcessContext)
 	cmd := osexec.CommandContext(processContext, spec.command[0], spec.command[1:]...)
 	cmd.Dir = spec.directory
 	cmd.Env = spec.environment
@@ -229,6 +232,7 @@ func (state *ioBuiltinState) startProcess(ctx context.Context, owner *Script, sp
 	// copied to the script console nor promoted to a Sleep error.
 	cmd.Stderr = outputLimits.stderr
 	if err := cmd.Start(); err != nil {
+		cancelProcessContext()
 		return nil, errors.Join(fmt.Errorf("start command: %w", err), childInput.Close(), parentWriter.Close(), parentReader.Close(), childOutput.Close())
 	}
 	closeErr := childInput.Close()
@@ -238,6 +242,7 @@ func (state *ioBuiltinState) startProcess(ctx context.Context, owner *Script, sp
 		_ = childOutput.Close()
 		_ = cmd.Process.Kill()
 		_ = cmd.Wait()
+		cancelProcessContext()
 		return nil, fmt.Errorf("start command: close child pipe endpoints: %w", closeErr)
 	}
 
@@ -245,7 +250,7 @@ func (state *ioBuiltinState) startProcess(ctx context.Context, owner *Script, sp
 	handle := newIOHandle("process", outputReader, parentWriter, true, true, false).withRuntimeOutputAccount(state.runtime.resources)
 	process := &processObject{
 		cmd: cmd, handle: handle, owner: owner, runtime: state.runtime,
-		done: make(chan struct{}), result: Null(), childOutput: childOutput, output: outputLimits,
+		done: make(chan struct{}), cancel: cancelProcessContext, result: Null(), childOutput: childOutput, output: outputLimits,
 	}
 	handle.setProcess(process)
 	go process.reap()
@@ -266,6 +271,7 @@ func (state *ioBuiltinState) startProcess(ctx context.Context, owner *Script, sp
 
 func (process *processObject) reap() {
 	err := process.cmd.Wait()
+	process.cancel()
 	outputErr := process.output.limitError()
 	if process.childOutput != nil {
 		_ = process.childOutput.Close()

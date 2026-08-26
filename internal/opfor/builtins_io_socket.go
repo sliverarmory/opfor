@@ -74,10 +74,11 @@ type sleepSocketTask struct {
 	lport      int32
 	backlog    int32
 
-	ctx    context.Context
-	cancel context.CancelFunc
-	done   chan struct{}
-	once   sync.Once
+	ctx            context.Context
+	cancel         context.CancelCauseFunc
+	releaseContext func()
+	done           chan struct{}
+	once           sync.Once
 
 	mu              sync.Mutex
 	conn            net.Conn
@@ -253,24 +254,26 @@ func (state *ioBuiltinState) newSleepSocketTask(
 	if invocation.Script != 0 && (owner == nil || !owner.Active()) {
 		return nil, ErrScriptUnloaded
 	}
-	taskContext, cancel := context.WithCancel(detachAsynchronousExecutionContext(ctx))
+	taskContext, releaseTaskContext, cancel := newAsynchronousExecutionTaskContext(ctx)
 	handle := newIOHandle("socket", nil, nil, true, true, false).withRuntimeOutputAccount(state.runtime.resources)
 	task := &sleepSocketTask{
-		state:      state.runtime.socketState,
-		owner:      owner,
-		handle:     handle,
-		invocation: invocation,
-		operation:  operation,
-		callback:   callback,
-		ctx:        taskContext,
-		cancel:     cancel,
-		done:       make(chan struct{}),
+		state:          state.runtime.socketState,
+		owner:          owner,
+		handle:         handle,
+		invocation:     invocation,
+		operation:      operation,
+		callback:       callback,
+		ctx:            taskContext,
+		cancel:         cancel,
+		releaseContext: releaseTaskContext,
+		done:           make(chan struct{}),
 	}
 	if callback != nil {
 		handle.setWorker(task)
 	}
 	if err := task.state.register(task); err != nil {
-		cancel()
+		cancel(context.Canceled)
+		task.releaseContext()
 		return nil, err
 	}
 	if owner != nil {
@@ -278,7 +281,8 @@ func (state *ioBuiltinState) newSleepSocketTask(
 		if !owner.active {
 			owner.mu.Unlock()
 			task.state.unregister(task)
-			cancel()
+			cancel(context.Canceled)
+			task.releaseContext()
 			return nil, ErrScriptUnloaded
 		}
 		if owner.socketTasks == nil {
@@ -366,6 +370,9 @@ func (task *sleepSocketTask) flowError() error {
 
 func (task *sleepSocketTask) complete() {
 	task.once.Do(func() {
+		if task.releaseContext != nil {
+			task.releaseContext()
+		}
 		task.mu.Lock()
 		task.finished = true
 		closing := task.closing
@@ -591,7 +598,10 @@ func (task *sleepSocketTask) cancelAndClose() {
 	attached := task.attached
 	finished := task.finished
 	task.mu.Unlock()
-	task.cancel()
+	task.cancel(context.Canceled)
+	if task.releaseContext != nil {
+		task.releaseContext()
+	}
 	if conn != nil && closer != nil {
 		if attached {
 			// Closing the transport first breaks the blocked-write -> writeMu ->

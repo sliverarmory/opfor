@@ -281,9 +281,10 @@ func (window *aggressorUIPresentationWindow) callbackContext(ctx context.Context
 	window.inFlight++
 	window.mu.Unlock()
 
+	caller, releaseCaller := captureExecutionCallerLease(ctx)
 	ancestry := &aggressorUICallbackAncestry{
 		context: presentationContext,
-		caller:  captureExecutionCaller(ctx),
+		caller:  caller,
 	}
 	ancestry.active.Store(true)
 	callbackContext := context.Context(aggressorUISynchronousCallbackContext{
@@ -293,6 +294,7 @@ func (window *aggressorUIPresentationWindow) callbackContext(ctx context.Context
 	})
 	return callbackContext, func() {
 		ancestry.active.Store(false)
+		releaseCaller()
 		window.mu.Lock()
 		if window.inFlight > 0 {
 			window.inFlight--
@@ -331,6 +333,10 @@ type aggressorUISynchronousCallbackContext struct {
 	context.Context
 	presentation context.Context
 	ancestry     *aggressorUICallbackAncestry
+}
+
+func (ctx aggressorUISynchronousCallbackContext) AfterFunc(function func()) func() bool {
+	return context.AfterFunc(ctx.Context, function)
 }
 
 func (ctx aggressorUISynchronousCallbackContext) Value(key any) any {

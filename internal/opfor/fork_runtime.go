@@ -23,11 +23,12 @@ type forkTask struct {
 	childReader  *io.PipeReader
 	childWriter  *io.PipeWriter
 
-	cancel context.CancelFunc
-	done   chan struct{}
-	once   sync.Once
-	result Value
-	err    error
+	cancel         context.CancelCauseFunc
+	releaseContext func()
+	done           chan struct{}
+	once           sync.Once
+	result         Value
+	err            error
 
 	traceMu     sync.Mutex
 	launchTrace *forkLaunchTrace
@@ -124,12 +125,13 @@ func (r *Runtime) fork(ctx context.Context, invocation Invocation) (Value, error
 		}
 	}
 
-	taskContext, cancel := context.WithCancel(detachAsynchronousExecutionContext(ctx))
+	taskContext, releaseTaskContext, cancel := newAsynchronousExecutionTaskContext(ctx)
 	task := &forkTask{
 		child:        child,
 		parentReader: toParent, parentWriter: fromParent,
 		childReader: toChild, childWriter: fromChild,
-		cancel: cancel, done: make(chan struct{}), result: Null(),
+		cancel: cancel, releaseContext: releaseTaskContext,
+		done: make(chan struct{}), result: Null(),
 	}
 	parentHandle.setTask(task)
 	childHandle.setTask(task)
@@ -459,6 +461,9 @@ func (task *forkTask) complete(result Value, err error) {
 		return
 	}
 	task.once.Do(func() {
+		if task.releaseContext != nil {
+			task.releaseContext()
+		}
 		task.result = result
 		task.err = err
 		// PipedInputStream notices a dead writer thread. Go's io.Pipe does not,
@@ -474,7 +479,10 @@ func (task *forkTask) cancelAndClose() {
 		return
 	}
 	if task.cancel != nil {
-		task.cancel()
+		task.cancel(context.Canceled)
+	}
+	if task.releaseContext != nil {
+		task.releaseContext()
 	}
 	cancelled := context.Canceled
 	_ = task.parentReader.CloseWithError(cancelled)

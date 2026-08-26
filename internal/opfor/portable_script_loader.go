@@ -93,9 +93,10 @@ type portableScriptInstanceRunToken struct {
 	// caller is the cancellation source which preceded this method's private
 	// run/evaluate context. Runtime-owned asynchronous work may outlive the
 	// synchronous ScriptInstance method while still honoring the importer.
-	caller context.Context
-	script atomic.Pointer[Script]
-	active atomic.Bool
+	caller        context.Context
+	releaseCaller func()
+	script        atomic.Pointer[Script]
+	active        atomic.Bool
 }
 
 type portableScriptInstanceRunContextKey struct{}
@@ -104,6 +105,7 @@ func withPortableScriptInstanceRunOwner(
 	ctx context.Context,
 	instance *portableScriptInstance,
 	caller context.Context,
+	releaseCaller func(),
 ) (context.Context, func()) {
 	if ctx == nil {
 		ctx = context.Background()
@@ -112,13 +114,19 @@ func withPortableScriptInstanceRunOwner(
 		caller = context.Background()
 	}
 	parent, _ := ctx.Value(portableScriptInstanceRunContextKey{}).(*portableScriptInstanceRunToken)
-	token := &portableScriptInstanceRunToken{instance: instance, parent: parent, caller: caller}
+	token := &portableScriptInstanceRunToken{
+		instance:      instance,
+		parent:        parent,
+		caller:        caller,
+		releaseCaller: idempotentContextRelease(releaseCaller),
+	}
 	if instance != nil {
 		token.script.Store(instance.childOwner.Load())
 	}
 	token.active.Store(true)
 	return context.WithValue(ctx, portableScriptInstanceRunContextKey{}, token), func() {
 		token.active.Store(false)
+		token.releaseCaller()
 	}
 }
 
@@ -152,13 +160,34 @@ func portableScriptInstanceRunOwner(ctx context.Context, instance *portableScrip
 	return nil, false
 }
 
+type portableScriptInstanceRunOwnerMaskedContext struct {
+	context.Context
+}
+
+func (ctx portableScriptInstanceRunOwnerMaskedContext) Value(key any) any {
+	if _, private := key.(portableScriptInstanceRunContextKey); private {
+		return (*portableScriptInstanceRunToken)(nil)
+	}
+	return ctx.Context.Value(key)
+}
+
+func (ctx portableScriptInstanceRunOwnerMaskedContext) AfterFunc(function func()) func() bool {
+	return context.AfterFunc(ctx.Context, function)
+}
+
+func (ctx portableScriptInstanceRunOwnerMaskedContext) retainExecutionCaller() (func(), bool) {
+	return retainExecutionCaller(ctx.Context)
+}
+
 func withoutPortableScriptInstanceRunOwner(ctx context.Context) context.Context {
 	if ctx == nil {
 		return context.Background()
 	}
 	// A typed nil shadows every synchronous owner token in the retained parent
-	// context without changing importer-owned values or cancellation.
-	return context.WithValue(ctx, portableScriptInstanceRunContextKey{}, (*portableScriptInstanceRunToken)(nil))
+	// context without changing importer-owned values or cancellation. The custom
+	// wrapper also forwards AfterFunc so context propagation does not allocate a
+	// goroutine merely because the private value is hidden.
+	return portableScriptInstanceRunOwnerMaskedContext{Context: ctx}
 }
 
 func (environment *portableScriptEnvironment) String() string {
@@ -1766,9 +1795,14 @@ func (instance *portableScriptInstance) evaluate(ctx context.Context, prefix, co
 	if instance.env != nil && instance.env.environmentTable() == nil {
 		return Null(), portableNullScriptEnvironmentError()
 	}
-	asyncCaller := detachExecutionLeaseCancellation(ctx)
+	asyncCaller, releaseAsyncCaller := detachExecutionLeaseCancellationLease(ctx)
 	evalContext, cancel := context.WithCancel(ctx)
-	evalContext, releaseRunOwner := withPortableScriptInstanceRunOwner(evalContext, instance, asyncCaller)
+	evalContext, releaseRunOwner := withPortableScriptInstanceRunOwner(
+		evalContext,
+		instance,
+		asyncCaller,
+		releaseAsyncCaller,
+	)
 	defer releaseRunOwner()
 	instance.stateMu.Lock()
 	if instance.closing {
@@ -1916,9 +1950,14 @@ func (instance *portableScriptInstance) run(ctx context.Context) (Value, error) 
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	asyncCaller := detachExecutionLeaseCancellation(ctx)
+	asyncCaller, releaseAsyncCaller := detachExecutionLeaseCancellationLease(ctx)
 	runContext, cancel := context.WithCancel(ctx)
-	runContext, releaseRunOwner := withPortableScriptInstanceRunOwner(runContext, instance, asyncCaller)
+	runContext, releaseRunOwner := withPortableScriptInstanceRunOwner(
+		runContext,
+		instance,
+		asyncCaller,
+		releaseAsyncCaller,
+	)
 	defer releaseRunOwner()
 	instance.stateMu.Lock()
 	if instance.closing {
