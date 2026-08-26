@@ -215,7 +215,7 @@ The explicit commands are:
 opfor run <script> [args...]   compile and execute a script
 opfor check <script>          compile without executing
 opfor eval <code>             evaluate one source string
-opfor repl                    use a persistent line-oriented session
+opfor repl                    use a persistent session with an interactive prompt
 opfor serve [script] [args...] manage scripts through a JSON-lines adapter
 opfor version                 print build version information
 ```
@@ -224,6 +224,11 @@ Use `-` as the script path to read source from standard input. Script arguments
 populate `@ARGV`. Runtime flags such as `--debug`, `--taint`,
 `--max-instructions`, the other resource quotas, and `--classpath` must precede
 the command or direct script path.
+
+When standard input and output are terminals, `opfor repl` displays a colored
+`opfor > ` prompt, and REPL evaluation diagnostics written to a terminal are
+red. Redirected sessions remain prompt-free, and redirected standard error
+stays plain text, so pipelines keep their existing line-oriented output.
 
 The CLI is an offline interpreter. It does not implement an external
 Aggressor/Cobalt connection, authentication, session transport, or UI.

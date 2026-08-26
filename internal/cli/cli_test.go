@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
 	"github.com/sliverarmory/opfor"
 )
 
@@ -555,6 +557,7 @@ func TestREPLUsesOneRuntimeContinuesAfterErrorsAndSkipsBlankLines(t *testing.T) 
 	factoryCalls := 0
 	closeCalls := 0
 	deps := inertDependencies()
+	deps.isInteractive = isInteractiveTerminal
 	deps.newRuntime = func(io.Reader, io.Writer, io.Writer, runtimeSettings) (scriptRuntime, error) {
 		factoryCalls++
 		return &fakeRuntime{eval: func(_ context.Context, name, code string, _ ...opfor.Value) (opfor.Value, error) {
@@ -593,8 +596,142 @@ func TestREPLUsesOneRuntimeContinuesAfterErrorsAndSkipsBlankLines(t *testing.T) 
 	if got := stdout.String(); got != "2\ndone\n" {
 		t.Fatalf("stdout = %q", got)
 	}
-	if got := stderr.String(); !strings.Contains(got, "<repl:3>: bad expression") {
-		t.Fatalf("stderr = %q", got)
+	if got, want := stderr.String(), "<repl:3>: bad expression\n"; got != want {
+		t.Fatalf("stderr = %q, want %q", got, want)
+	}
+}
+
+func TestREPLShowsPromptForInteractiveTerminal(t *testing.T) {
+	t.Parallel()
+
+	stdin := strings.NewReader("1 + 1\n\nbad\n\"done\"\n")
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	options := normalizeOptions(Options{Stdin: stdin, Stdout: stdout, Stderr: stderr})
+	deps := inertDependencies()
+	deps.isInteractive = func(gotStdin io.Reader, gotStdout io.Writer) bool {
+		if gotStdin != stdin || gotStdout != stdout {
+			t.Fatal("interactive detection did not receive the configured streams")
+		}
+		return true
+	}
+	deps.newRuntime = func(io.Reader, io.Writer, io.Writer, runtimeSettings) (scriptRuntime, error) {
+		return &fakeRuntime{eval: func(_ context.Context, _, code string, _ ...opfor.Value) (opfor.Value, error) {
+			switch code {
+			case "1 + 1":
+				return opfor.Int(2), nil
+			case "bad":
+				return opfor.Null(), errors.New("bad expression")
+			case `"done"`:
+				return opfor.String("done"), nil
+			default:
+				t.Fatalf("unexpected eval code = %q", code)
+				return opfor.Null(), nil
+			}
+		}}, nil
+	}
+	command := newCommand(options, deps)
+	command.SetArgs([]string{"repl"})
+	if err := command.ExecuteContext(context.Background()); err != nil {
+		t.Fatalf("repl: %v", err)
+	}
+	if got, want := stdout.String(), "opfor > 2\nopfor > opfor > opfor > done\nopfor > \n"; got != want {
+		t.Fatalf("stdout = %q, want %q", got, want)
+	}
+	if got, want := stderr.String(), "<repl:3>: bad expression\n"; got != want {
+		t.Fatalf("stderr = %q, want %q", got, want)
+	}
+}
+
+func TestRenderREPLPromptUsesLipGlossColorProfiles(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		profile termenv.Profile
+		want    string
+	}{
+		{name: "plain", profile: termenv.Ascii, want: replPrompt},
+		{name: "ansi", profile: termenv.ANSI, want: "\x1b[1;33mopfor\x1b[0m > "},
+		{name: "ansi256", profile: termenv.ANSI256, want: "\x1b[1;33mopfor\x1b[0m > "},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			renderer := lipgloss.NewRenderer(io.Discard)
+			renderer.SetColorProfile(test.profile)
+			if got := renderREPLPrompt(renderer); got != test.want {
+				t.Fatalf("prompt = %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
+func TestRenderREPLErrorUsesLipGlossColorProfiles(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		profile termenv.Profile
+		want    string
+	}{
+		{name: "plain", profile: termenv.Ascii, want: "<repl:3>: bad expression"},
+		{name: "ansi", profile: termenv.ANSI, want: "\x1b[31m<repl:3>: bad expression\x1b[0m"},
+		{name: "ansi256", profile: termenv.ANSI256, want: "\x1b[31m<repl:3>: bad expression\x1b[0m"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			renderer := lipgloss.NewRenderer(io.Discard)
+			renderer.SetColorProfile(test.profile)
+			if got := renderREPLError(renderer, "<repl:3>: bad expression"); got != test.want {
+				t.Fatalf("error = %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
+func TestRenderREPLErrorPreservesMultilineLayout(t *testing.T) {
+	t.Parallel()
+
+	renderer := lipgloss.NewRenderer(io.Discard)
+	renderer.SetColorProfile(termenv.ANSI)
+	want := "\x1b[31msummary\x1b[0m\n\x1b[31m\tcaret\x1b[0m"
+	if got := renderREPLError(renderer, "summary\n\tcaret"); got != want {
+		t.Fatalf("error = %q, want %q", got, want)
+	}
+}
+
+func TestREPLReportsPromptWriteFailure(t *testing.T) {
+	t.Parallel()
+
+	sentinel := errors.New("sentinel")
+	options := normalizeOptions(Options{
+		Stdin:  strings.NewReader("1 + 1\n"),
+		Stdout: errorWriter{err: sentinel},
+		Stderr: &bytes.Buffer{},
+	})
+	err := runREPL(context.Background(), &fakeRuntime{}, options, true)
+	if !errors.Is(err, sentinel) || !strings.Contains(err.Error(), "write repl prompt") {
+		t.Fatalf("runREPL error = %v, want wrapped prompt write failure", err)
+	}
+}
+
+func TestREPLReportsErrorWriteFailure(t *testing.T) {
+	t.Parallel()
+
+	sentinel := errors.New("sentinel")
+	options := normalizeOptions(Options{
+		Stdin:  strings.NewReader("bad\n"),
+		Stdout: &bytes.Buffer{},
+		Stderr: errorWriter{err: sentinel},
+	})
+	runtime := &fakeRuntime{eval: func(context.Context, string, string, ...opfor.Value) (opfor.Value, error) {
+		return opfor.Null(), errors.New("bad expression")
+	}}
+	err := runREPL(context.Background(), runtime, options, false)
+	if !errors.Is(err, sentinel) || !strings.Contains(err.Error(), "write repl error") {
+		t.Fatalf("runREPL error = %v, want wrapped error write failure", err)
 	}
 }
 
@@ -605,10 +742,11 @@ func TestREPLCancellationDoesNotWaitForInput(t *testing.T) {
 	defer reader.Close()
 	defer writer.Close()
 	ctx, cancel := context.WithCancel(context.Background())
-	options := normalizeOptions(Options{Stdin: reader, Stdout: &bytes.Buffer{}, Stderr: &bytes.Buffer{}})
+	stdout := &bytes.Buffer{}
+	options := normalizeOptions(Options{Stdin: reader, Stdout: stdout, Stderr: &bytes.Buffer{}})
 	done := make(chan error, 1)
 	go func() {
-		done <- runREPL(ctx, &fakeRuntime{}, options)
+		done <- runREPL(ctx, &fakeRuntime{}, options, true)
 	}()
 	cancel()
 	select {
@@ -616,9 +754,20 @@ func TestREPLCancellationDoesNotWaitForInput(t *testing.T) {
 		if !errors.Is(err, context.Canceled) {
 			t.Fatalf("runREPL error = %v, want context cancellation", err)
 		}
+		if got, want := stdout.String(), "opfor > \n"; got != want {
+			t.Fatalf("stdout = %q, want %q", got, want)
+		}
 	case <-time.After(time.Second):
 		t.Fatal("runREPL did not return after context cancellation")
 	}
+}
+
+type errorWriter struct {
+	err error
+}
+
+func (writer errorWriter) Write([]byte) (int, error) {
+	return 0, writer.err
 }
 
 func TestVersionAndHelpDoNotCreateRuntime(t *testing.T) {

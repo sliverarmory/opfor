@@ -13,14 +13,22 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
+	"github.com/mattn/go-isatty"
+	"github.com/muesli/termenv"
 	"github.com/sliverarmory/opfor"
 	"github.com/spf13/cobra"
 )
 
 const (
-	defaultVersion = opfor.Version
-	maxREPLLine    = 8 << 20
-	closeTimeout   = 5 * time.Second
+	defaultVersion   = opfor.Version
+	maxREPLLine      = 8 << 20
+	closeTimeout     = 5 * time.Second
+	replPromptName   = "opfor"
+	replPromptMarker = " > "
+	replPrompt       = replPromptName + replPromptMarker
+	replPromptColor  = lipgloss.Color("3")
+	replErrorColor   = lipgloss.Color("1")
 )
 
 // Options configures command input, output, and version reporting. Nil streams
@@ -43,6 +51,7 @@ type dependencies struct {
 	readFileBounded func(string, uint64) ([]byte, error)
 	compile         func(opfor.Source) (*opfor.Program, error)
 	newRuntime      func(io.Reader, io.Writer, io.Writer, runtimeSettings) (scriptRuntime, error)
+	isInteractive   func(io.Reader, io.Writer) bool
 }
 
 type runtimeSettings struct {
@@ -83,6 +92,7 @@ func defaultDependencies() dependencies {
 			}
 			return opfor.New(options...)
 		},
+		isInteractive: isInteractiveTerminal,
 	}
 }
 
@@ -272,7 +282,8 @@ func newREPLCommand(options Options, dependencies dependencies, settings *runtim
 			defer func() {
 				resultErr = errors.Join(resultErr, closeRuntime(runtime))
 			}()
-			return runREPL(command.Context(), runtime, options)
+			interactive := dependencies.isInteractive != nil && dependencies.isInteractive(options.Stdin, options.Stdout)
+			return runREPL(command.Context(), runtime, options, interactive)
 		},
 	}
 }
@@ -393,12 +404,14 @@ func readSourceWithLimit(reader io.Reader, limit uint64) ([]byte, error) {
 	return data, nil
 }
 
-func runREPL(ctx context.Context, runtime scriptRuntime, options Options) error {
+func runREPL(ctx context.Context, runtime scriptRuntime, options Options, interactive bool) error {
 	type inputLine struct {
 		number int
 		code   string
 		err    error
 	}
+	scanCtx, cancelScan := context.WithCancel(ctx)
+	defer cancelScan()
 	lines := make(chan inputLine)
 	go func() {
 		defer close(lines)
@@ -408,34 +421,47 @@ func runREPL(ctx context.Context, runtime scriptRuntime, options Options) error 
 			line := inputLine{number: number, code: scanner.Text()}
 			select {
 			case lines <- line:
-			case <-ctx.Done():
+			case <-scanCtx.Done():
 				return
 			}
 		}
 		if err := scanner.Err(); err != nil {
 			select {
 			case lines <- inputLine{err: err}:
-			case <-ctx.Done():
+			case <-scanCtx.Done():
 			}
 		}
 	}()
 
+	prompt := ""
+	if interactive {
+		prompt = renderREPLPrompt(newREPLRenderer(options.Stdout))
+	}
+	var errorRenderer *lipgloss.Renderer
+	if streamIsTerminal(options.Stderr) {
+		errorRenderer = newREPLRenderer(options.Stderr)
+	}
 	for {
+		if interactive {
+			if _, err := io.WriteString(options.Stdout, prompt); err != nil {
+				return fmt.Errorf("write repl prompt: %w", err)
+			}
+		}
 		var line inputLine
 		var ok bool
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return finishREPLPrompt(options.Stdout, interactive, ctx.Err())
 		case line, ok = <-lines:
 			if !ok {
-				return ctx.Err()
+				return finishREPLPrompt(options.Stdout, interactive, ctx.Err())
 			}
 		}
 		if line.err != nil {
-			return fmt.Errorf("read repl input: %w", line.err)
+			return finishREPLPrompt(options.Stdout, interactive, fmt.Errorf("read repl input: %w", line.err))
 		}
 		if err := ctx.Err(); err != nil {
-			return err
+			return finishREPLPrompt(options.Stdout, interactive, err)
 		}
 		code := line.code
 		if strings.TrimSpace(code) == "" {
@@ -444,7 +470,11 @@ func runREPL(ctx context.Context, runtime scriptRuntime, options Options) error 
 		name := fmt.Sprintf("<repl:%d>", line.number)
 		value, err := runtime.Eval(ctx, name, code)
 		if err != nil {
-			if _, writeErr := fmt.Fprintf(options.Stderr, "%s: %v\n", name, err); writeErr != nil {
+			diagnostic := fmt.Sprintf("%s: %v", name, err)
+			if errorRenderer != nil {
+				diagnostic = renderREPLError(errorRenderer, diagnostic)
+			}
+			if _, writeErr := fmt.Fprintln(options.Stderr, diagnostic); writeErr != nil {
 				return fmt.Errorf("write repl error: %w", writeErr)
 			}
 			continue
@@ -453,6 +483,57 @@ func runREPL(ctx context.Context, runtime scriptRuntime, options Options) error 
 			return fmt.Errorf("write repl result: %w", err)
 		}
 	}
+}
+
+func renderREPLPrompt(renderer *lipgloss.Renderer) string {
+	return renderer.NewStyle().
+		Bold(true).
+		Foreground(replPromptColor).
+		Render(replPromptName) + replPromptMarker
+}
+
+func renderREPLError(renderer *lipgloss.Renderer, message string) string {
+	style := renderer.NewStyle().
+		Foreground(replErrorColor).
+		TabWidth(lipgloss.NoTabConversion)
+	lines := strings.Split(message, "\n")
+	for index := range lines {
+		lines[index] = style.Render(lines[index])
+	}
+	return strings.Join(lines, "\n")
+}
+
+func newREPLRenderer(writer io.Writer) *lipgloss.Renderer {
+	if streamIsCygwinTerminal(writer) {
+		// MSYS2 and Cygwin PTYs are named pipes, which termenv does not
+		// otherwise classify as terminals when selecting a color profile.
+		return lipgloss.NewRenderer(writer, termenv.WithTTY(true))
+	}
+	return lipgloss.NewRenderer(writer)
+}
+
+func finishREPLPrompt(writer io.Writer, interactive bool, resultErr error) error {
+	if !interactive {
+		return resultErr
+	}
+	if _, err := io.WriteString(writer, "\n"); err != nil {
+		return errors.Join(resultErr, fmt.Errorf("write repl prompt: %w", err))
+	}
+	return resultErr
+}
+
+func isInteractiveTerminal(stdin io.Reader, stdout io.Writer) bool {
+	return streamIsTerminal(stdin) && streamIsTerminal(stdout)
+}
+
+func streamIsTerminal(stream any) bool {
+	file, ok := stream.(interface{ Fd() uintptr })
+	return ok && (isatty.IsTerminal(file.Fd()) || isatty.IsCygwinTerminal(file.Fd()))
+}
+
+func streamIsCygwinTerminal(stream any) bool {
+	file, ok := stream.(interface{ Fd() uintptr })
+	return ok && isatty.IsCygwinTerminal(file.Fd())
 }
 
 func isHelpArgument(argument string) bool {

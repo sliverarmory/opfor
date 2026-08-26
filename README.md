@@ -132,7 +132,12 @@ Then evaluate an expression, validate a script, or run it:
 ./opfor eval '2 + 2'
 ./opfor check examples/01-hello.sl
 ./opfor run examples/01-hello.sl operator
+./opfor repl
 ```
+
+The REPL displays a colored `opfor > ` prompt and red evaluation errors in a
+terminal. Redirected input and output remain prompt-free for line-oriented
+pipelines.
 
 See [`examples/`](examples/) for runnable scripts that use only stock Sleep
 syntax and built-ins.
