@@ -1,8 +1,7 @@
 # Stock Sleep examples
 
 These scripts use only the Sleep language and its stock built-ins. They do not
-depend on Aggressor Script, Cobalt Strike, or application-provided host
-functions.
+depend on Aggressor Script or application-provided host functions.
 
 Build OPFOR, then check or run any example from the repository root:
 

@@ -1,15 +1,15 @@
 # OPFOR
 
-OPFOR is a pure-Go, embeddable implementation of the Sleep language and the
-Cobalt Strike Aggressor Script (`.cna`) runtime. The same runtime is exposed as
-a Go library and through a Cobra-based command-line interpreter named `opfor`.
+OPFOR is a pure-Go, embeddable implementation of the Sleep language and
+Aggressor Script (`.cna`) runtime. The same runtime is exposed as a Go library
+and through a Cobra-based command-line interpreter named `opfor`.
 
 The current source target is **`v0.1.0-alpha.1`**. Its acceptance suite compiles
-and loads all 18 manifest-pinned `.cna` files from commit
-`36d7514dbec82d53d23f25fe7f9e18f4af613be8` of the official
-`Cobalt-Strike/aggressor_script_examples` repository and exercises at least one
-representative behavior from each through deterministic inert importer
-adapters. The acceptance inventory and upstream provenance are pinned in
+and loads all 18 manifest-pinned `.cna` files from the pinned Aggressor Script
+examples corpus at commit `36d7514dbec82d53d23f25fe7f9e18f4af613be8`
+and exercises at least one representative behavior from each through
+deterministic inert importer adapters. The acceptance inventory and upstream
+provenance are pinned in
 [`testdata/corpus.json`](../testdata/corpus.json).
 
 The project remains under active compatibility-first development. It does not
@@ -19,8 +19,8 @@ working host behavior:
 
 - Sleep syntax compatibility
 - portable Sleep execution compatibility
-- Aggressor API compatibility through Go callbacks
-- Java/Cobalt object compatibility through importer adapters
+- Aggressor Script API compatibility through Go callbacks
+- Java/host object compatibility through importer adapters
 
 OPFOR is not a JVM or a Java standard-library reimplementation. Sleep's
 bracket-object syntax is an integration boundary: `ObjectHost` receives first
@@ -46,24 +46,27 @@ additional serialization-shape coverage is not a language/runtime release gate.
 
 ## Embedding
 
+For a concise inventory of every extension point, typed provider, request
+family, callback capability, and routing rule, see the [Aggressor Script
+extension and provider API reference](aggressor-script-extensions.md).
+
 Console output defaults to standard output, warnings and diagnostics default to
 standard error, and console input defaults to standard input. Importers can
 replace all three streams and register native or fallback host functions:
 
-OPFOR owns parsing, evaluation, Sleep/Aggressor call semantics, callback
+OPFOR owns parsing, evaluation, Sleep/Aggressor Script call semantics, callback
 lifecycle, provenance, and portable defaults. The importing application owns
-Cobalt-specific state and effects: Team Server transport, Beacon tasking,
-payload generation, client UI, data stores, and operator/session state. Known
-families use typed provider interfaces; `WithFunction` supplies exact
-per-function overrides, and `WithHost` is the generic compatibility fallback.
-All three boundaries exchange in-process `Value`s and guarded callbacks; they
-do not require serialization.
+host-specific state and effects: transport, Beacon tasking, payload generation,
+client UI, data stores, and operator/session state. Known families use typed
+provider interfaces; `WithFunction` supplies exact per-function overrides, and
+`WithHost` is the generic compatibility fallback. All three boundaries exchange
+in-process `Value`s and guarded callbacks; they do not require serialization.
 
 Importer adapters can validate the shared Host, object, `use()`, lifecycle,
-callback-revocation, and error contracts with the public, Team-Server-free
+callback-revocation, and error contracts with the public, host-independent
 [`conformance` test kit](../conformance). The kit creates inert reference
 endpoints and reports stable versioned cases; it does not claim that an
-adapter's Cobalt-owned effects are implemented.
+adapter's host-owned effects are implemented.
 
 ```go
 runtime, err := opfor.New(
@@ -149,8 +152,8 @@ is not required. For example, `bshell` is validated and delivered as an
 `AggressorBeaconAction`, but OPFOR never runs that command locally or tasks a
 Beacon itself. An unconfigured typed family falls back to `WithHost`; if no
 Host is configured, OPFOR returns an explicit unsupported-operation error.
-This makes a small offline host, a test double, and a complete Team Server
-adapter different implementations of the same interpreter boundary.
+This makes a small offline host, a test double, and a complete Aggressor Script
+host adapter different implementations of the same interpreter boundary.
 
 The stock function namespace is evidence-gated. Convenience spellings that are
 not established by pinned Sleep source/JAR behavior, the official Aggressor
@@ -169,7 +172,7 @@ operations return `ErrScriptUnloaded` after logical generation retirement
 rather than targeting a later run. `Valid` reports provenance, not liveness,
 and `Same` compares the underlying runtime rather than generation identity.
 
-The nine typed Cobalt-effect request families additionally carry
+The nine typed host-effect request families additionally carry
 `opfor.AggressorBindings`. This opaque capability exposes the same
 event/hook/popup operations without a
 raw `*Runtime`, evaluator, registry, or scope. It is bound to the exact runtime
@@ -234,7 +237,7 @@ reference specifies only the transformation family. The public output grammar
 for `array`, `vba`, and `vbs` is incomplete, so OPFOR rejects those selectors
 instead of inventing byte-for-byte compatibility.
 
-The related Cobalt-owned `encode(code, encoder, architecture)`,
+The related host-provided `encode(code, encoder, architecture)`,
 `powershell_compress(script)`, and `transform_vbs(shellcode, maxRun)` functions
 use the typed `WithAggressorCodeTransformProvider` boundary. OPFOR enforces
 their exact three-, one-, and two-argument forms, resolves each Value once, and
@@ -298,7 +301,7 @@ describe/detail results, strict arity rejection, or side-effect return values;
 these are explicit OPFOR policies, with missing lookups and registration
 functions returning `$null`. An optional group is accepted only when that group
 exists at registration, and effective snapshots hide groups until an active
-command references them. Cobalt Strike's own UI sorting is separate from
+command references them. Host UI sorting is separate from
 OPFOR's deterministic registry enumeration.
 
 The thirteen documented Beacon technique-registry functions are portable too:
@@ -334,7 +337,7 @@ the host. If no script callback exists, including a metadata-only importer base
 entry, OPFOR forwards the original invocation exactly once to `WithHost` and
 discards its synchronous result. These wrappers never perform local tasking:
 payload selection and actual privilege escalation or lateral movement remain
-explicit embedding/Cobalt boundaries. A null query name
+explicit embedding/host boundaries. A null query name
 returns `$null`; null/empty registration names, null callbacks, and null remote
 architecture are rejected, while a null description becomes empty. These null
 rules, strict arity, exact case, raw enumeration order, duplicate layering, and
@@ -370,15 +373,16 @@ Without one, the original `Invocation`, including
 reference arguments, is forwarded to `WithHost` exactly once with its result
 and error unchanged. `WithFunction` still has highest precedence. The catalog
 keeps all twelve functions host-required because OPFOR supplies routing and
-provenance, not Cobalt session data.
+provenance, not host session data.
 
-The related `data_keys()`, `data_query(key)`, and `pivots()` functions use their own typed
-`WithAggressorDataModelQueryProvider` boundary because Cobalt's general data
-model is heterogeneous and is not limited to Beacon metadata. OPFOR enforces
-their documented zero-, one-, and zero-argument forms, resolves the query key once, and
-passes the provider result through without sorting, deduplication, coercion,
-shape validation, or copying. Provider order and compound identity therefore
-remain visible to the script; return fresh detached arrays or hashes when
+The related `data_keys()`, `data_query(key)`, and `pivots()` functions use their
+own typed `WithAggressorDataModelQueryProvider` boundary because an Aggressor
+Script host's general data model is heterogeneous and is not limited to Beacon
+metadata. OPFOR enforces their documented zero-, one-, and zero-argument forms,
+resolves the query key once, and passes the provider result through without
+sorting, deduplication, coercion, shape validation, or copying. Provider order
+and compound identity therefore remain visible to the script; return fresh
+detached arrays or hashes when
 script mutation must not affect backing state. Provider success or error is
 authoritative. Without a provider, the original reference-bearing invocation
 reaches `WithHost` once, and `WithFunction` retains highest precedence. The
@@ -402,7 +406,7 @@ authoritative; without the provider, the original reference-bearing call
 reaches `WithHost` once and retains that Host's result policy. No request or
 result is serialized.
 
-Eight additional Cobalt-owned PE operations use
+Eight additional host-provided PE operations use
 `WithAggressorPEProvider`: `pe_insert_rich_header(content, richHeader)`,
 `pe_mask_section(content, sectionName, key)`,
 `pe_patch_code(content, findBytes, replacementBytes)`,
@@ -421,8 +425,8 @@ and `WithFunction` retains precedence. The provider follows portable
 argument table lists only DLL content, while both executable examples supply a
 second export-name value. OPFOR accepts one or two arguments and preserves
 omission through `AggressorPERequest.HasArgument(1)` so the importer can apply
-its licensed-runtime policy. This range is not a claim that Cobalt Strike
-accepts both forms.
+its reference-runtime policy. This range is not a claim that every Aggressor
+Script host accepts both forms.
 
 The four documented preference functions use
 `WithAggressorPreferenceProvider`. `pref_get(name, default)` and
@@ -446,7 +450,7 @@ user-defined hook inventories, path formats, selection validation, or persistenc
 errors are authoritative, an absent provider preserves the raw Host call, and
 no process-injection request is serialized.
 
-Team Server configuration and active Malleable C2 profile behavior use
+Aggressor Script host configuration and active profile behavior use
 `WithAggressorProfileProvider`. It covers the zero-argument `killdate` query,
 `setup_strings(payload)`, and `setup_transformations(payload, architecture)`.
 OPFOR resolves each argument Value once and transfers the provider result
@@ -455,8 +459,8 @@ transformations. The four Covert VPN functions similarly use
 `WithAggressorVPNProvider`: `vpn_interfaces()`,
 `vpn_interface_info(interface[, key])`, `vpn_tap_create(...)`, and
 `vpn_tap_delete(interface)`. Inventory and metadata return the provider Value;
-create/delete are side-effect-only. Neither boundary connects to a Team Server
-or serializes requests.
+create/delete are side-effect-only. Neither boundary implements host
+connectivity or serializes requests.
 
 Client identity, chat, shared events, and connection lifecycle use
 `WithAggressorClientServiceProvider`. The value-producing
@@ -468,7 +472,7 @@ remains usable through `ObjectHost`. `action`, `elog`, `say`, `privmsg`,
 `$null` after provider success. The optional download callback preserves
 omitted, explicit `$null`, and retained callable states and is revoked with its
 owning script. OPFOR implements call shape and routing, while the importer owns
-the connected client and Team Server effect.
+the connected client and host effect.
 
 The two documented stageless-artifact functions use the typed
 `WithAggressorArtifactProvider` boundary. The deprecated
@@ -523,7 +527,7 @@ higher precedence than these wrappers and their arity checks regardless of
 option order. Explicit providers follow portable `ScriptLoader` children.
 The compatibility catalog nevertheless keeps all six names host-required:
 OPFOR supplies typed routing and lifecycle/provenance guards, not payload
-generation or Team Server IP, hosting, removal, or enumeration effects.
+generation or host IP, hosting, removal, or enumeration effects.
 
 The documented `call(command, callback, argument, ...)` function has a separate
 typed `WithAggressorTeamServerRPCProvider` boundary. OPFOR requires at least
@@ -543,7 +547,7 @@ invocation reaches `WithHost` exactly once, while `WithFunction("call", ...)`
 has highest precedence. Explicit providers follow portable `ScriptLoader`
 children and may be called concurrently. This API only transfers in-process
 OPFOR Values and guarded callbacks: it performs no serialization and implements
-no Team Server protocol, connection, authentication, or transport. The public
+no host protocol, connection, authentication, or transport. The public
 reference specifies the callback's `(command, response)` ABI and one-or-more
 payload arguments, but not the native return value, null-callback behavior,
 response multiplicity, invalid-call errors, cancellation ordering, or payload
@@ -591,7 +595,7 @@ Host. `WithFunction` has higher precedence than every native wrapper regardless
 of option order. Explicit providers follow portable `ScriptLoader` children,
 whose distinct nonzero `RuntimeID` disambiguates runtime-local Script IDs.
 
-Seven lower-level Cobalt-owned operations use the separate
+Seven lower-level host-owned operations use the separate
 `WithAggressorBeaconExecutionProvider` boundary: `beacon_execute_job` (four
 arguments), `beacon_execute_postex_job` (three through six),
 `beacon_inline_execute` and `beacon_inline_execute_pe` (four or five), and
@@ -605,7 +609,7 @@ omitted/null/guarded-callable states described above. For
 `BEACON_INLINE_EXECUTE` hook and sends the resulting binary string to the
 provider. The boundary is synchronous and authoritative, follows portable
 `ScriptLoader` children, and exchanges ordinary in-process Values and guarded
-capabilities only—there is no serialization or Team Server transport.
+capabilities only—there is no serialization or host transport.
 
 Without this provider, the original reference-bearing Invocation falls back to
 `WithHost` once. `beacon_inline_execute` retains its older specialized Host
@@ -717,7 +721,7 @@ invalid UTF-8 cannot split or corrupt the record; a short write is an error.
 Installing a sink replaces, rather than duplicates, this fallback. Explicit
 sinks are inherited by portable `ScriptLoader` children; an unset sink remains
 unset so each child uses its own redirectable console. This display path is
-not Cobalt transcript persistence, operator attribution, task/report storage,
+not host transcript persistence, operator attribution, task/report storage,
 or Beacon tasking. `btask` only records the supplied description, and
 `btaskcompleted` records only an explicit call—OPFOR never synthesizes task
 completion.
@@ -747,7 +751,7 @@ it returns copied bytes as a binary-provenance Sleep string. A successful empty
 result remains an empty string so the documented `strlen(result) <= 0` check is
 observable. Extractor errors are authoritative, and OPFOR never parses, links,
 relocates, or executes the object. Without an extractor, the exact original
-Invocation reaches `WithHost`, allowing a Cobalt-aware adapter to supply the
+Invocation reaches `WithHost`, allowing a host-aware adapter to supply the
 format without baking an unverified protocol into OPFOR. This executable
 boundary is published by `DefaultAggressorFunctionContracts` and cataloged as
 `runtime-enforced`; the accepted one-argument form is an inference from the
@@ -1124,7 +1128,7 @@ repeated popup/menu composition replaces its previous descendant tree instead
 of growing persistent registrations. Missing Aggressor behavior in `.cna`
 execution produces an
 error chain containing a typed `UnsupportedError`; OPFOR does not pretend that
-a Cobalt, UI, network, or payload action succeeded. With the default host,
+a host, UI, network, or payload action succeeded. With the default host,
 unresolved calls in ordinary Sleep `.sl` source retain Sleep's warning-and-null
 behavior instead.
 
@@ -1233,9 +1237,9 @@ execution with a nonzero exit status. The same instruction limit applies when
 an importer enters script code through event or popup dispatch, hook invocation,
 or an exact binding ID; synchronous nested dispatch reuses the active budget.
 
-`opfor` is an offline interpreter for local source; it is not the proprietary
-`agscript` Team Server client and does not implement its connection, login, or
-session protocol. Direct execution and `opfor run` are one-shot: registered
+`opfor` is an offline interpreter for local source; it does not implement an
+external Aggressor Script host's connection, authentication, or session
+protocol. Direct execution and `opfor run` are one-shot: registered
 events, commands, aliases, and hooks are unloaded when execution completes.
 `opfor repl` provides a persistent local evaluation session. `opfor serve`
 creates one persistent runtime with an optional startup script and accepts
@@ -1279,13 +1283,12 @@ gates passed.
 ## Compatibility strategy
 
 OPFOR uses the canonical Sleep 2.1 regression suite as its language oracle and
-the Apache-licensed `Cobalt-Strike/aggressor_script_examples` repository as its
-only external `.cna` corpus. Corpus files are pinned, hashed, and retain their
-upstream licenses. OPFOR-authored synthetic snippets remain inline in Go tests
-so they cannot be mistaken for another imported script corpus.
-Optional differential tests may use a separately supplied licensed Cobalt
-Strike installation, but proprietary artifacts are never required by normal
-tests or vendored into this repository.
+an Apache-licensed, pinned Aggressor Script examples corpus as its only external
+`.cna` corpus. Corpus files are hashed and retain their upstream licenses.
+OPFOR-authored synthetic snippets remain inline in Go tests so they cannot be
+mistaken for another imported script corpus. Optional differential tests may
+use a separately supplied licensed reference runtime, but proprietary artifacts
+are never required by normal tests or vendored into this repository.
 
 The current automated baseline verifies all 342 canonical Sleep source files
 against their expected parser outcome (330 accepted programs and 12 malformed
@@ -1295,7 +1298,7 @@ reference cases, one hermetic inert-JAR byte fixture, and 15 compile/load
 diagnostic comparisons. OPFOR
 also compiles and loads all 18 approved official `.cna` sources through inert
 recording adapters, and each has a representative mock execution. These tests
-perform no Cobalt, process, network, or UI effects. A worktree guard rejects any
+perform no host, process, network, or UI effects. A worktree guard rejects any
 worktree `.cna` path that is outside the approved directory or absent from
 its SHA-pinned manifest. The public [`aggressor` catalog](../aggressor) exposes
 the machine-readable name inventory and callback classifications.
@@ -1398,11 +1401,11 @@ fork, and the observed dynamic-source continuation groups are covered.
 Unobserved nested/inline-combined foreach resume graphs, saved
 exception-handler contexts, and unsupported closure atoms remain typed
 serialization failures. Focused interoperability tests pin the official Sleep
-2.1 descriptor profile. A few
-debug-only goldens also embed JVM object identity strings that a pure-Go value
-cannot reproduce. Arbitrary JVM, Swing, and Cobalt objects require an
-`ObjectHost`; the default runtime supplies portable Java scalar helpers,
-class literals and import validation, mutable `StringBuilder`/`StringBuffer`,
+2.1 descriptor profile. A few debug-only goldens also embed JVM object identity
+strings that a pure-Go value cannot reproduce. Arbitrary JVM, Swing, and
+Aggressor Script host objects require an `ObjectHost`; the default runtime
+supplies portable Java scalar helpers, class literals and import validation,
+mutable `StringBuilder`/`StringBuffer`,
 raw `cast`-created native arrays, eager Sleep-container/string conversion for
 Java method array returns, bounded `reflect.Array.newInstance` allocation with
 Java's 255-total-dimension rule, `StringTokenizer`, common lists, sets, maps, complete
@@ -1459,9 +1462,9 @@ effects.
 
 ## Independence
 
-OPFOR is an independent compatibility implementation. Cobalt Strike and
-Aggressor Script are names used to describe compatibility; this project is not
-affiliated with or endorsed by Fortra or the Cobalt Strike authors.
+OPFOR is an independent compatibility implementation. Aggressor Script is used
+only to describe compatibility; this project is not affiliated with or endorsed
+by its authors or maintainers.
 
 ## License
 
