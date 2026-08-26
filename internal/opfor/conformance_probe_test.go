@@ -41,7 +41,7 @@ var sleepGoldenExecutionOracles = []sleepGoldenExecutionOracle{
 	{name: "forksubs"}, {name: "forplay"}, {name: "fpfuncs"}, {name: "ftest"}, {name: "funchandle"}, {name: "functiondesc"},
 	{name: "functionerr"}, {name: "genfun"}, {name: "graph"},
 	{name: "hash"}, {name: "hash2"}, {name: "hash3"}, {name: "hash4", wantRuntimeError: true},
-	{name: "hashambig"}, {name: "hashself"}, {name: "hexbites"}, {name: "hfreeze"}, {name: "hoeswarning"},
+	{name: "hashambig"}, {name: "hashself"}, {name: "hexbites"}, {name: "hfreeze", timeout: 10 * time.Second}, {name: "hoeswarning"},
 	{name: "identity"}, {name: "if"},
 	{name: "ifand"}, {name: "ifand2"}, {name: "ifarray"},
 	{name: "ifbang"}, {name: "ifby4"}, {name: "iff"}, {name: "ifferr"}, {name: "ifnoparens"},

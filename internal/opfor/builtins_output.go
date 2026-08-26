@@ -41,7 +41,7 @@ func (r *Runtime) installCoreFunctions() {
 // enumeration must remain independent of process state.
 func (r *Runtime) coreFunctions(ioFunctions map[string]NativeFunc) map[string]NativeFunc {
 	core := r.sleepFunctions(ioFunctions)
-	mergeDisjointFunctionInventory(core, r.aggressorFunctions())
+	r.mergeAggressorFunctions(core)
 	return core
 }
 
@@ -111,6 +111,16 @@ func (r *Runtime) sleepFunctions(ioFunctions map[string]NativeFunc) map[string]N
 // instead of silently changing resolution precedence.
 func (r *Runtime) aggressorFunctions() map[string]NativeFunc {
 	functions := make(map[string]NativeFunc)
+	r.mergeAggressorFunctions(functions)
+	return functions
+}
+
+// mergeAggressorFunctions installs each Aggressor tranche directly into the
+// destination. coreFunctions uses this path to avoid building and copying an
+// intermediate full Aggressor map during every Runtime construction, while
+// aggressorFunctions retains the independently inspectable inventory used by
+// profile and regression tests.
+func (r *Runtime) mergeAggressorFunctions(functions map[string]NativeFunc) {
 	for _, inventory := range []map[string]NativeFunc{
 		r.aggressorPortableUtilityFunctions(),
 		aggressorBinaryFunctions(),
@@ -121,7 +131,6 @@ func (r *Runtime) aggressorFunctions() map[string]NativeFunc {
 		mergeDisjointFunctionInventory(functions, inventory)
 	}
 	removeEvidenceGatedFunctions(functions)
-	return functions
 }
 
 func mergeDisjointFunctionInventory(destination, source map[string]NativeFunc) {
