@@ -2,12 +2,6 @@
   <img src=".github/images/logo.png" alt="OPFOR logo" width="220">
 </p>
 
-<h1 align="center">OPFOR</h1>
-
-<p align="center">
-  A pure-Go embeddable Sleep and Aggressor Script runtime.
-</p>
-
 OPFOR is a pure Go implementation of Sleep and Aggressor Script runtime.
 
 
