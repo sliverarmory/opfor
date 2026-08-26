@@ -123,7 +123,7 @@ func TestSleepGoldenConformance(t *testing.T) {
 			if timeout == 0 {
 				timeout = 2 * time.Second
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), timeout)
+			ctx, cancel := context.WithTimeout(context.Background(), compatibilityExecutionTimeout(timeout))
 			_, err = runtime.Execute(ctx, program)
 			cancel()
 			if err != nil && !test.wantRuntimeError {

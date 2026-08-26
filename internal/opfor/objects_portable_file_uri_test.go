@@ -85,8 +85,10 @@ return @(
 		urlFile = urlFile[:index]
 	}
 	pathClass := "sun.nio.fs.UnixPath"
+	pathValue := abstractPath
 	if goruntime.GOOS == "windows" {
 		pathClass = "sun.nio.fs.WindowsPath"
+		pathValue = strings.ReplaceAll(pathValue, "/", `\`)
 	}
 	want := []string{
 		"java.net.URI", "file:" + rawPath, "file:" + rawPath, "file:" + rawPath,
@@ -95,7 +97,7 @@ return @(
 		"java.net.URL", "file:" + urlPath, "file:" + urlPath, "file:" + urlPath,
 		"file", "", "", "", "-1", "-1", urlFile, urlFile, "", urlRef,
 		"1", "1", "1", "1",
-		pathClass, abstractPath, "1", "1", "1", "1", "1", abstractPath, "1", "",
+		pathClass, pathValue, "1", "1", "1", "1", "1", pathValue, "1", "",
 	}
 	if got := argvValueStrings(array.Values()); fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Fatalf("File URI/URL/Path values = %#v\nwant %#v", got, want)

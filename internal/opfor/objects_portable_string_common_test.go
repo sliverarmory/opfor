@@ -9,6 +9,8 @@ import (
 	"os"
 	osexec "os/exec"
 	"reflect"
+	goruntime "runtime"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -53,9 +55,19 @@ const portableJavaStringCommonProbeOutput = "alpha|null|😀\n" +
 
 func TestPortableJavaStringCommonMethodsExactOutput(t *testing.T) {
 	t.Parallel()
-	if got := runPortableJavaStringCommonProbe(t); !bytes.Equal(got, []byte(portableJavaStringCommonProbeOutput)) {
-		t.Fatalf("portable common String output mismatch\nwant:\n%sgot:\n%s", portableJavaStringCommonProbeOutput, got)
+	want := portableJavaStringCommonExpectedOutput()
+	if got := runPortableJavaStringCommonProbe(t); !bytes.Equal(got, []byte(want)) {
+		t.Fatalf("portable common String output mismatch\nwant bytes: %q\ngot bytes:  %q\nwant:\n%sgot:\n%s", want, got, want, got)
 	}
+}
+
+func portableJavaStringCommonExpectedOutput() string {
+	if goruntime.GOOS != "windows" {
+		return portableJavaStringCommonProbeOutput
+	}
+	// Formatter's %n conversion uses the platform line separator. The Sleep
+	// println surrounding that formatted value contributes the following LF.
+	return strings.Replace(portableJavaStringCommonProbeOutput, "ABCDEF|\n\n", "ABCDEF|\r\n\n", 1)
 }
 
 func TestPortableJavaStringCommonMethodsOfficialJARDifferential(t *testing.T) {

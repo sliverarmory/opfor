@@ -37,7 +37,7 @@ func TestForkCanonicalCompatibility(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), compatibilityExecutionTimeout(10*time.Second))
 			_, err = runtime.Execute(ctx, program)
 			cancel()
 			if err != nil {
