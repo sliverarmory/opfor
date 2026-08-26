@@ -839,7 +839,10 @@ func TestFileSourceResolverClasspathContinuesPastStatError(t *testing.T) {
 
 func TestNewFileSourceResolverPreservesWhitespaceOnlyBaseDirectory(t *testing.T) {
 	parent := t.TempDir()
-	base := filepath.Join(parent, "   ")
+	// Win32 strips leading and trailing ASCII spaces from file and directory
+	// names. EM SPACE remains a valid whitespace-only component on every
+	// supported platform while still detecting accidental strings.TrimSpace.
+	base := filepath.Join(parent, "\u2003\u2003\u2003")
 	if err := os.Mkdir(base, 0o700); err != nil {
 		t.Fatal(err)
 	}

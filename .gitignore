@@ -3,5 +3,6 @@
 /opfor.exe
 /CHANGELOG.md
 /TODO.md
-/docs/
+/docs/*
+!/docs/README.md
 .DS_Store

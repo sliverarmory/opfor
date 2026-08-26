@@ -52,8 +52,12 @@ func TestFileSourceResolverSleepClasspathSeparatorsPreserveVolumes(t *testing.T)
 				t.Fatal(err)
 			}
 			resolver.SetSleepClasspath(test.classPath)
-			if got := resolver.SleepClasspath(); !reflect.DeepEqual(got, test.want) {
-				t.Fatalf("SleepClasspath() = %#v, want %#v", got, test.want)
+			want := make([]string, len(test.want))
+			for index, entry := range test.want {
+				want[index] = filepath.FromSlash(entry)
+			}
+			if got := resolver.SleepClasspath(); !reflect.DeepEqual(got, want) {
+				t.Fatalf("SleepClasspath() = %#v, want %#v", got, want)
 			}
 		})
 	}

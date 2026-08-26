@@ -18,6 +18,12 @@ import (
 func TestPortableJavaFileURIURLPathSourceContract(t *testing.T) {
 	root := filepath.ToSlash(t.TempDir())
 	pathname := root + "/opfor uri#frag?.txt"
+	if goruntime.GOOS == "windows" {
+		// '?' is meaningful to the legacy URL contract but is not a legal
+		// Windows NIO Path character. Keep '#' coverage while allowing this
+		// combined contract test to exercise File.toPath on Windows.
+		pathname = root + "/opfor uri#frag.txt"
+	}
 	runtimeInstance, err := New()
 	if err != nil {
 		t.Fatal(err)

@@ -732,9 +732,14 @@ func (loader *portableScriptLoader) compileFile(ctx context.Context, invocation 
 	}
 	source.Data = decoded
 	// The String file-name overload canonicalizes the default filesystem path.
-	// Custom resolver names belong to the importer and remain logical.
+	// Keep the runtime-visible identity slash-separated on every platform so
+	// ScriptLoader registry keys, source spans, and importer callbacks do not
+	// vary between Unix and Windows. modificationPath remains the native path
+	// returned by the resolver and is used independently for filesystem I/O and
+	// change tracking. Custom resolver names belong to the importer and remain
+	// logical.
 	if loader.runtime.defaultFileResolver != nil {
-		source.Name = loader.runtime.defaultFileResolver.resolvePath(name)
+		source.Name = filepath.ToSlash(loader.runtime.defaultFileResolver.resolvePath(name))
 	}
 	program, err := loader.runtime.compileReservedSource(source)
 	return program, resolved.modificationPath, err

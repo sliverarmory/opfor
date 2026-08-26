@@ -45,10 +45,16 @@ type sleepSocketState struct {
 type sleepSocketListener struct {
 	requestedPort int32
 	listener      *net.TCPListener
+	acceptor      sleepSocketAcceptor
+}
 
-	mu        sync.Mutex
-	closed    bool
-	acceptors map[*net.TCPListener]struct{}
+// sleepSocketAcceptor isolates the platform-specific mechanism used to let
+// several cached ServerSocket accepts wait at once. Unix duplicates the
+// listener descriptor, while Windows uses a broker because TCPListener.File is
+// not implemented there.
+type sleepSocketAcceptor interface {
+	accept(context.Context, int32) (net.Conn, error)
+	close() error
 }
 
 type sleepSocketTask struct {
@@ -716,7 +722,7 @@ func (state *sleepSocketState) listener(
 	entry := &sleepSocketListener{
 		requestedPort: port,
 		listener:      listener,
-		acceptors:     make(map[*net.TCPListener]struct{}),
+		acceptor:      newSleepSocketAcceptor(listener),
 	}
 	state.mu.Lock()
 	if state.closed {
@@ -735,114 +741,17 @@ func (state *sleepSocketState) listener(
 }
 
 func (listener *sleepSocketListener) accept(ctx context.Context, timeout int32) (net.Conn, error) {
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-	acceptor, err := listener.newAcceptor()
-	if err != nil {
-		return nil, err
-	}
-	defer listener.releaseAcceptor(acceptor)
-
-	deadline := time.Time{}
-	if timeout > 0 {
-		deadline = time.Now().Add(time.Duration(timeout) * time.Millisecond)
-	}
-	if err := acceptor.SetDeadline(deadline); err != nil {
-		return nil, err
-	}
-
-	// ServerSocket accepts on one cached listener may run concurrently. File and
-	// FileListener provide each Go waiter with a duplicate descriptor and its own
-	// deadline, avoiding cross-cancellation when one owning script unloads.
-	stop := make(chan struct{})
-	wakeDone := make(chan struct{})
-	go func() {
-		defer close(wakeDone)
-		select {
-		case <-ctx.Done():
-			_ = acceptor.SetDeadline(time.Now())
-		case <-stop:
-		}
-	}()
-	conn, err := acceptor.AcceptTCP()
-	close(stop)
-	<-wakeDone
-	if contextErr := ctx.Err(); contextErr != nil {
-		if conn != nil {
-			_ = conn.Close()
-		}
-		return nil, contextErr
-	}
-	return conn, err
-}
-
-func (listener *sleepSocketListener) newAcceptor() (*net.TCPListener, error) {
-	file, err := listener.listener.File()
-	if err != nil {
-		return nil, err
-	}
-	duplicate, duplicateErr := net.FileListener(file)
-	fileErr := file.Close()
-	if duplicateErr != nil {
-		return nil, errors.Join(duplicateErr, fileErr)
-	}
-	acceptor, ok := duplicate.(*net.TCPListener)
-	if !ok {
-		_ = duplicate.Close()
-		return nil, fmt.Errorf("socket listener duplicate has type %T", duplicate)
-	}
-	if fileErr != nil {
-		_ = acceptor.Close()
-		return nil, fileErr
-	}
-
-	listener.mu.Lock()
-	if listener.closed {
-		listener.mu.Unlock()
-		_ = acceptor.Close()
+	if listener == nil || listener.acceptor == nil {
 		return nil, net.ErrClosed
 	}
-	listener.acceptors[acceptor] = struct{}{}
-	listener.mu.Unlock()
-	return acceptor, nil
-}
-
-func (listener *sleepSocketListener) releaseAcceptor(acceptor *net.TCPListener) {
-	if listener == nil || acceptor == nil {
-		return
-	}
-	listener.mu.Lock()
-	delete(listener.acceptors, acceptor)
-	listener.mu.Unlock()
-	_ = acceptor.Close()
+	return listener.acceptor.accept(ctx, timeout)
 }
 
 func (listener *sleepSocketListener) close() error {
-	if listener == nil {
+	if listener == nil || listener.acceptor == nil {
 		return nil
 	}
-	listener.mu.Lock()
-	if listener.closed {
-		listener.mu.Unlock()
-		return nil
-	}
-	listener.closed = true
-	acceptors := make([]*net.TCPListener, 0, len(listener.acceptors))
-	for acceptor := range listener.acceptors {
-		acceptors = append(acceptors, acceptor)
-	}
-	listener.acceptors = make(map[*net.TCPListener]struct{})
-	listener.mu.Unlock()
-
-	result := listener.listener.Close()
-	for _, acceptor := range acceptors {
-		result = errors.Join(result, acceptor.Close())
-	}
-	return result
+	return listener.acceptor.close()
 }
 
 func (state *sleepSocketState) release(port int32) {
@@ -1072,7 +981,9 @@ func sleepJavaConnectError(host string, err error) error {
 	if errors.Is(err, syscall.EADDRINUSE) || errors.Is(err, syscall.EADDRNOTAVAIL) {
 		return fmt.Errorf("java.net.BindException: %s", sleepSocketErrorDetail(err))
 	}
-	if errors.Is(err, syscall.ECONNREFUSED) {
+	// Windows reports Winsock's WSAECONNREFUSED (10061), while
+	// syscall.ECONNREFUSED there is a distinct synthetic value.
+	if errors.Is(err, syscall.ECONNREFUSED) || errors.Is(err, syscall.Errno(10_061)) {
 		return errors.New("java.net.ConnectException: Connection refused")
 	}
 	if errors.Is(err, syscall.ENETUNREACH) || errors.Is(err, syscall.EHOSTUNREACH) {

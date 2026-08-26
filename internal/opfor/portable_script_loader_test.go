@@ -1233,11 +1233,11 @@ func TestPortableScriptLoaderFilesystemChangeTracking(t *testing.T) {
 
 	t.Run("relative include after runtime chdir", func(t *testing.T) {
 		root := t.TempDir()
-		dependencyDirectory := filepath.Join(root, " dependency directory ")
+		dependencyDirectory := filepath.Join(root, "dependency directory")
 		if err := os.Mkdir(dependencyDirectory, 0o700); err != nil {
 			t.Fatal(err)
 		}
-		dependencyName := " included source.sl "
+		dependencyName := "included source.sl"
 		dependencyPath := filepath.Join(dependencyDirectory, dependencyName)
 		if err := os.WriteFile(dependencyPath, []byte("$included = 1;\n"), 0o600); err != nil {
 			t.Fatal(err)

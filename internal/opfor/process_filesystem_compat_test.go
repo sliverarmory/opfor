@@ -81,7 +81,11 @@ done`,
 
 func TestSleepBTestCanonicalCompatibilityWithInertJARFixture(t *testing.T) {
 	source, golden := readProcessFilesystemFixture(t, "btest")
-	program, err := Compile(NewSource("btest.sl", source))
+	// The upstream fixture relies on JVM process exit to close its global file
+	// handle. OPFOR runs it in-process, so close the fixture-owned handle after
+	// the canonical assertions to keep Windows from retaining sleep.jar.
+	fixtureSource := append(bytes.Clone(source), []byte("\nclosef($handle);\n")...)
+	program, err := Compile(NewSource("btest.sl", fixtureSource))
 	if err != nil {
 		t.Fatalf("Compile: %v", err)
 	}

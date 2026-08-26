@@ -105,6 +105,12 @@ func portableJavaFileCanExecute(path string) bool {
 }
 
 func portableJavaFileSpace(path string, kind portableJavaFileSpaceKind) int64 {
+	// WinNTFileSystem checks File.exists before querying its volume. Without
+	// this guard GetVolumePathNameW can resolve a nonexistent leaf and report
+	// the containing volume's space instead of File's specified zero.
+	if _, err := os.Stat(path); err != nil {
+		return 0
+	}
 	pathPointer, err := syscall.UTF16PtrFromString(path)
 	if err != nil {
 		return 0

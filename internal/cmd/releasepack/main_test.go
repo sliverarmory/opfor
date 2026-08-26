@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -141,10 +142,16 @@ func TestWriteChecksums(t *testing.T) {
 	if string(content) != want {
 		t.Fatalf("checksums = %q, want %q", content, want)
 	}
+	wantMode := os.FileMode(0o644)
+	if runtime.GOOS == "windows" {
+		// Windows only supports the owner-writable permission bit, so Stat
+		// reports writable regular files with all read/write bits set.
+		wantMode = 0o666
+	}
 	if info, err := os.Stat(destination); err != nil {
 		t.Fatal(err)
-	} else if info.Mode().Perm() != 0o644 {
-		t.Fatalf("checksums mode = %o, want 644", info.Mode().Perm())
+	} else if info.Mode().Perm() != wantMode {
+		t.Fatalf("checksums mode = %o, want %o", info.Mode().Perm(), wantMode)
 	}
 }
 
