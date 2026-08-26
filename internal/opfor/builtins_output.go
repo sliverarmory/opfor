@@ -35,12 +35,21 @@ func (r *Runtime) installCoreFunctions() {
 	}
 }
 
-// coreFunctions is the single default native-function inventory. The I/O map
-// is supplied separately because a live Runtime snapshots its working
-// directory when that bridge is constructed, while metadata enumeration must
-// remain independent of process state.
+// coreFunctions composes the disjoint Sleep and Aggressor default inventories.
+// The I/O map is supplied separately because a live Runtime snapshots its
+// working directory when that bridge is constructed, while metadata
+// enumeration must remain independent of process state.
 func (r *Runtime) coreFunctions(ioFunctions map[string]NativeFunc) map[string]NativeFunc {
-	core := map[string]NativeFunc{
+	core := r.sleepFunctions(ioFunctions)
+	mergeDisjointFunctionInventory(core, r.aggressorFunctions())
+	return core
+}
+
+// sleepFunctions returns the installed Sleep native inventory. Stateful bridge
+// maps are materialized exactly once for each Runtime and their NativeFunc
+// values flow unchanged into stockFunctions and the public resolution table.
+func (r *Runtime) sleepFunctions(ioFunctions map[string]NativeFunc) map[string]NativeFunc {
+	functions := map[string]NativeFunc{
 		"print":    r.print,
 		"println":  r.println,
 		"printf":   r.println,
@@ -48,60 +57,91 @@ func (r *Runtime) coreFunctions(ioFunctions map[string]NativeFunc) map[string]Na
 		"warn":     r.warn,
 	}
 	for name, function := range r.collectionFunctions() {
-		core[name] = function
+		functions[name] = function
 	}
 	// BasicUtilities.add ultimately mutates a Java List. Its invalid-position
 	// exception is translated by Sleep's Block into a soft warning, so wrap the
 	// portable default at installation time while leaving direct bridge calls
 	// and importer overrides untouched.
-	if add := core["add"]; add != nil {
-		core["add"] = wrapAddMutation(add)
+	if add := functions["add"]; add != nil {
+		functions["add"] = wrapAddMutation(add)
 	}
 	for name, function := range r.mutationFunctions() {
-		core[name] = function
+		functions[name] = function
 	}
 	for name, function := range r.stringNumberFunctions() {
-		core[name] = function
+		functions[name] = function
 	}
 	for name, function := range r.mathExtraFunctions() {
-		core[name] = function
+		functions[name] = function
 	}
 	for name, function := range r.utilityExtraFunctions() {
-		core[name] = function
+		functions[name] = function
 	}
-	for name, function := range r.aggressorPortableUtilityFunctions() {
-		core[name] = function
+	for name, function := range sleepBinaryFunctions() {
+		functions[name] = function
 	}
-	for name, function := range r.binaryFunctions() {
-		core[name] = function
-	}
-	for name, function := range r.sequenceFunctions() {
-		core[name] = function
+	for name, function := range r.sleepSequenceFunctions() {
+		// reverse is intentionally installed after stringNumberFunctions. Both
+		// historical tranches expose the name; the sequence implementation is
+		// the existing authoritative default.
+		functions[name] = function
 	}
 	for name, function := range ioFunctions {
-		core[name] = function
+		functions[name] = function
 	}
-	for name, function := range r.timeFunctions() {
-		core[name] = function
+	for name, function := range r.sleepTimeFunctions() {
+		functions[name] = function
 	}
-	for name, function := range r.runtimeFunctions() {
-		core[name] = function
+	for name, function := range r.sleepRuntimeFunctions() {
+		functions[name] = function
 	}
 	for name, function := range r.concurrencyFunctions() {
-		core[name] = function
+		functions[name] = function
 	}
 	for name, function := range r.dynamicSourceFunctions() {
-		core[name] = function
+		functions[name] = function
 	}
-	// Keep convenience helpers with no pinned Sleep or Aggressor namespace
-	// evidence out of the stock runtime. Their pure-Go implementations remain
-	// available internally for focused compatibility tests and an importer may
-	// opt into the same spelling with WithFunction. Otherwise the unresolved
-	// call must reach Host instead of being silently claimed by OPFOR.
+	removeEvidenceGatedFunctions(functions)
+	return functions
+}
+
+// aggressorFunctions returns the installed Aggressor native inventory. Each
+// tranche must be disjoint so a newly duplicated name fails at construction
+// instead of silently changing resolution precedence.
+func (r *Runtime) aggressorFunctions() map[string]NativeFunc {
+	functions := make(map[string]NativeFunc)
+	for _, inventory := range []map[string]NativeFunc{
+		r.aggressorPortableUtilityFunctions(),
+		aggressorBinaryFunctions(),
+		aggressorSequenceFunctions(),
+		r.aggressorTimeFunctions(),
+		r.aggressorRuntimeFunctions(),
+	} {
+		mergeDisjointFunctionInventory(functions, inventory)
+	}
+	removeEvidenceGatedFunctions(functions)
+	return functions
+}
+
+func mergeDisjointFunctionInventory(destination, source map[string]NativeFunc) {
+	for name, function := range source {
+		if _, exists := destination[name]; exists {
+			panic(fmt.Sprintf("opfor: duplicate native function %q across disjoint inventories", name))
+		}
+		destination[name] = function
+	}
+}
+
+// removeEvidenceGatedFunctions keeps conveniences with no pinned Sleep or
+// Aggressor namespace evidence out of each installable inventory. Their pure-
+// Go implementations remain in focused bridge tranches and an importer may opt
+// into the same spelling with WithFunction. Otherwise unresolved calls reach
+// Host instead of being silently claimed by OPFOR.
+func removeEvidenceGatedFunctions(functions map[string]NativeFunc) {
 	for name := range evidenceGatedExtensionFunctionNames {
-		delete(core, name)
+		delete(functions, name)
 	}
-	return core
 }
 
 // evidenceGatedExtensionFunctionNames are implemented conveniences which are

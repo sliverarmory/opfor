@@ -9,6 +9,7 @@ import (
 
 	"github.com/sliverarmory/opfor/internal/ast"
 	"github.com/sliverarmory/opfor/internal/bytecode"
+	"github.com/sliverarmory/opfor/internal/envspec"
 )
 
 type fiber struct {
@@ -786,15 +787,20 @@ func (f *fiber) step(ctx context.Context, instruction bytecode.Instruction) (Val
 			f.pc++
 			return Null(), false, false, nil
 		}
+		closureMode := envspec.ClosureCurrent
+		if spec, ok := envspec.LookupFold(instruction.Keyword); ok {
+			closureMode = spec.Closure
+		}
 		var closure *scriptClosure
-		if strings.EqualFold(instruction.Keyword, "inline") {
+		switch closureMode {
+		case envspec.ClosureInline:
 			closure = f.closure.script.newInline(instruction.Body, f.scope)
-		} else if strings.EqualFold(instruction.Keyword, "sub") {
+		case envspec.ClosureRoot:
 			// DefaultEnvironment wraps a sub body in a new SleepClosure. That
 			// closure receives an independent internal scope and does not capture
 			// the declaration site's active local/this levels.
 			closure = f.closure.script.newClosure(instruction.Body, f.scope.root)
-		} else {
+		default:
 			// Importer-defined and Aggressor environments may deliberately retain
 			// their composition frame. In particular nested popup/menu/item bodies
 			// inherit the parent invocation arguments. That is separate from

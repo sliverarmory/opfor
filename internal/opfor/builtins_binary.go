@@ -24,16 +24,23 @@ import (
 	"unicode/utf8"
 )
 
-// binaryFunctions returns the pure-Go Sleep/Aggressor binary helpers.
-// Binary-producing helpers return Values with byte-sized UTF-16 units and
-// explicit raw-byte provenance; text encodings are applied only by text I/O.
-func (*Runtime) binaryFunctions() map[string]NativeFunc {
+// sleepBinaryFunctions returns the pure-Go Sleep binary bridge. Binary-
+// producing helpers return Values with byte-sized UTF-16 units and explicit
+// raw-byte provenance; text encodings are applied only by text I/O.
+func sleepBinaryFunctions() map[string]NativeFunc {
 	return map[string]NativeFunc{
-		"pack":          builtinSleepPack,
-		"unpack":        builtinSleepUnpack,
-		"sizeof":        builtinSleepSizeof,
-		"digest":        builtinSleepDigest,
-		"checksum":      builtinSleepChecksum,
+		"pack":     builtinSleepPack,
+		"unpack":   builtinSleepUnpack,
+		"sizeof":   builtinSleepSizeof,
+		"digest":   builtinSleepDigest,
+		"checksum": builtinSleepChecksum,
+	}
+}
+
+// aggressorBinaryFunctions returns the client-independent Aggressor binary
+// helpers documented outside Sleep's stock bridge namespace.
+func aggressorBinaryFunctions() map[string]NativeFunc {
+	return map[string]NativeFunc{
 		"base64_encode": builtinBase64Encode,
 		"base64_decode": builtinBase64Decode,
 	}

@@ -10,11 +10,12 @@ import (
 	"strings"
 )
 
-// sequenceFunctions returns the iterable, set, and functional tranche of the
-// portable runtime. The canonical functions follow Sleep 2.1's
-// BasicUtilities, BasicNumbers, and BasicStrings bridges. Functions not
-// present in Sleep 2.1 use small, deterministic collection semantics.
-func (r *Runtime) sequenceFunctions() map[string]NativeFunc {
+// sleepSequenceFunctions returns the iterable, set, and functional tranche of
+// the portable Sleep runtime. The canonical functions follow Sleep 2.1's
+// BasicUtilities, BasicNumbers, and BasicStrings bridges. Evidence-gated
+// conveniences remain here until coreFunctions removes them from the stock
+// namespace.
+func (r *Runtime) sleepSequenceFunctions() map[string]NativeFunc {
 	return map[string]NativeFunc{
 		"concat":      builtinConcat,
 		"sublist":     builtinSublist,
@@ -36,9 +37,16 @@ func (r *Runtime) sequenceFunctions() map[string]NativeFunc {
 		"sortn":       builtinSortNumeric,
 		"sortd":       builtinSortDouble,
 		"reverse":     builtinSequenceReverse,
-		"range":       builtinRange,
 		"zip":         builtinZip,
 		"mapValues":   builtinMapValues,
+	}
+}
+
+// aggressorSequenceFunctions returns the documented Aggressor sequence
+// helpers which are not part of Sleep's stock bridge namespace.
+func aggressorSequenceFunctions() map[string]NativeFunc {
+	return map[string]NativeFunc{
+		"range": builtinRange,
 	}
 }
 

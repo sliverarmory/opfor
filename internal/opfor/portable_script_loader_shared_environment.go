@@ -5,6 +5,8 @@ import (
 	"errors"
 	"sort"
 	"strings"
+
+	"github.com/sliverarmory/opfor/internal/envspec"
 )
 
 // portableScriptSharedEnvironment is the pure-Go state carried by a
@@ -282,8 +284,8 @@ func (shared *portableScriptSharedEnvironment) installDefaultIntrospectionBridge
 	shared.putLocked(String("&listRoots"), fileListing)
 
 	defaultEnvironment := ObjectValue(newPortableScriptBridge("DefaultEnvironment", portableBridgeEnvironment))
-	for _, keyword := range portableDefaultScriptEnvironmentKeywords {
-		shared.putLocked(String(keyword), defaultEnvironment)
+	for _, spec := range envspec.Builtins() {
+		shared.putLocked(String(spec.Keyword), defaultEnvironment)
 	}
 
 	regex := ObjectValue(newPortableScriptBridge("RegexBridge.isMatch", portableBridgeFunction|portableBridgePredicate))
@@ -306,11 +308,6 @@ func (shared *portableScriptSharedEnvironment) installDefaultIntrospectionBridge
 		}
 		shared.putLocked(String(keyword), ObjectValue(newPortableScriptBridge("importer."+keyword, interfaces)))
 	}
-}
-
-var portableDefaultScriptEnvironmentKeywords = []string{
-	"sub", "inline", "on", "when", "command", "alias", "ssh_alias",
-	"set", "hook", "popup", "menu", "menubar", "item", "bind", "filter",
 }
 
 type portableScriptBridgeInterfaces uint8

@@ -8,6 +8,7 @@ import (
 
 	"github.com/sliverarmory/opfor/internal/ast"
 	"github.com/sliverarmory/opfor/internal/bytecode"
+	"github.com/sliverarmory/opfor/internal/envspec"
 )
 
 type bindingInvocationContextKey struct{}
@@ -137,7 +138,7 @@ func bindingHasAncestor(binding Binding, ancestor Binding) bool {
 }
 
 func isCompositionBinding(kind BindingKind) bool {
-	return kind == BindingPopup || kind == BindingMenu
+	return envspec.RecomposesDescendants(string(kind))
 }
 
 // clearBindingDescendants retires the previous ephemeral popup/menu tree just

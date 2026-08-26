@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/sliverarmory/opfor/internal/bytecode"
+	"github.com/sliverarmory/opfor/internal/envspec"
 )
 
 // Script is one loaded program and its persistent globals and registrations.
@@ -1722,8 +1723,11 @@ func (s *Script) registerBinding(ctx context.Context, binding Binding, callback 
 	defer func() { resultErr = joinExecutionError(resultErr, release) }()
 	// Declaration-form `when name { ... }` reaches this common path through
 	// OpBind. Keep the language semantic authoritative here so every compiler
-	// and environment-registration path gets the same one-shot lifetime.
-	if binding.Kind == BindingEvent && strings.EqualFold(binding.Keyword, "when") {
+	// and environment-registration path gets the same one-shot lifetime. Only
+	// apply non-default lifetimes: importer-created persistent bindings and
+	// explicitly one-shot programmatic bindings otherwise remain untouched.
+	spec, knownEnvironment := envspec.LookupFold(binding.Keyword)
+	if knownEnvironment && spec.Lifetime == envspec.Once && binding.Kind == BindingKind(spec.Binding) {
 		binding.Lifetime = BindingOnce
 	}
 	binding.Script = s.id
@@ -1898,41 +1902,16 @@ func (s *Script) removeBindingIfPresent(binding Binding) bool {
 }
 
 func bindingKind(keyword string) BindingKind {
-	switch strings.ToLower(keyword) {
-	case "sub":
-		return BindingSub
-	case "inline":
-		return BindingInline
-	case "on", "when":
-		return BindingEvent
-	case "command":
-		return BindingCommand
-	case "alias":
-		return BindingAlias
-	case "ssh_alias":
-		return BindingSSHAlias
-	case "set", "hook":
-		return BindingHook
-	case "popup":
-		return BindingPopup
-	case "menu", "menubar":
-		return BindingMenu
-	case "item":
-		return BindingItem
-	case "bind":
-		return BindingKey
-	default:
-		return BindingKind(strings.ToLower(keyword))
+	keyword = strings.ToLower(keyword)
+	if spec, ok := envspec.Lookup(keyword); ok {
+		return BindingKind(spec.Binding)
 	}
+	return BindingKind(keyword)
 }
 
 func knownBindingEnvironment(keyword string) bool {
-	switch strings.ToLower(keyword) {
-	case "sub", "inline", "on", "when", "command", "alias", "ssh_alias", "set", "hook", "popup", "menu", "menubar", "item", "bind", "filter":
-		return true
-	default:
-		return false
-	}
+	_, ok := envspec.Lookup(strings.ToLower(keyword))
+	return ok
 }
 
 func (s *Script) resolveFunction(name string) Callable {

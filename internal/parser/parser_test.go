@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/sliverarmory/opfor/internal/ast"
+	"github.com/sliverarmory/opfor/internal/envspec"
 	"github.com/sliverarmory/opfor/internal/lexer"
 	"github.com/sliverarmory/opfor/internal/parser"
 )
@@ -354,6 +355,42 @@ report custom selector { println("host extension"); }
 	generic := result.Script.Statements[5].(*ast.EnvironmentStmt)
 	if generic.Keyword != "report" || len(generic.Selectors) != 2 {
 		t.Fatalf("generic environment = %#v", generic)
+	}
+}
+
+func TestBuiltInEnvironmentSpecificationsParseAsDeclarations(t *testing.T) {
+	t.Parallel()
+
+	for _, spec := range envspec.Builtins() {
+		spec := spec
+		t.Run(spec.Keyword, func(t *testing.T) {
+			t.Parallel()
+			source := spec.Keyword + ` declaration_name { return; }`
+			result := parser.Parse(lexer.NewSource("built-in-environment.cna", []byte(source)))
+			assertNoErrors(t, result)
+			if len(result.Script.Statements) != 1 {
+				t.Fatalf("statement count = %d, want 1", len(result.Script.Statements))
+			}
+			declaration, ok := result.Script.Statements[0].(*ast.EnvironmentStmt)
+			if !ok {
+				t.Fatalf("statement = %T, want *ast.EnvironmentStmt", result.Script.Statements[0])
+			}
+			if declaration.Keyword != spec.Keyword || declaration.Form != ast.OrdinaryEnvironment ||
+				len(declaration.Selectors) != 1 || declaration.Selectors[0].Value != "declaration_name" {
+				t.Fatalf("declaration = %#v", declaration)
+			}
+		})
+	}
+}
+
+func TestEnvironmentSpecificationLookupRemainsCaseInsensitiveInParser(t *testing.T) {
+	t.Parallel()
+
+	result := parser.Parse(lexer.NewSource("mixed-environment.cna", []byte(`On ready { return; }`)))
+	assertNoErrors(t, result)
+	declaration, ok := result.Script.Statements[0].(*ast.EnvironmentStmt)
+	if !ok || declaration.Keyword != "On" || declaration.Form != ast.OrdinaryEnvironment {
+		t.Fatalf("mixed-case declaration = %#v", result.Script.Statements[0])
 	}
 }
 

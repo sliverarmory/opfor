@@ -2,7 +2,10 @@ package lexer
 
 import (
 	"reflect"
+	"strings"
 	"testing"
+
+	"github.com/sliverarmory/opfor/internal/envspec"
 )
 
 func TestLexOfficialStyleSample(t *testing.T) {
@@ -186,6 +189,39 @@ func TestLexExtendedKeywordsAndPredicates(t *testing.T) {
 		if token.Kind != Operator {
 			t.Errorf("%q kind = %s, want operator", token.Lexeme, token.Kind)
 		}
+	}
+}
+
+func TestLexEnvironmentSpecificationKeywordBoundaries(t *testing.T) {
+	t.Parallel()
+
+	for _, spec := range envspec.Builtins() {
+		spec := spec
+		t.Run(spec.Keyword, func(t *testing.T) {
+			t.Parallel()
+			result := Lex(NewSource("environment-keyword", []byte(spec.Keyword)))
+			if len(result.Diagnostics) != 0 {
+				t.Fatalf("diagnostics = %v", result.Diagnostics)
+			}
+			want := Identifier
+			if spec.LexicalKeyword {
+				want = Keyword
+			}
+			if got := result.Tokens[0].Kind; got != want {
+				t.Fatalf("%q kind = %s, want %s", spec.Keyword, got, want)
+			}
+
+			mixed := strings.ToUpper(spec.Keyword[:1]) + spec.Keyword[1:]
+			mixedResult := Lex(NewSource("mixed-environment-keyword", []byte(mixed)))
+			if got := mixedResult.Tokens[0].Kind; got != Identifier {
+				t.Fatalf("mixed-case %q kind = %s, want identifier", mixed, got)
+			}
+		})
+	}
+
+	report := Lex(NewSource("generic-host-extension", []byte("report")))
+	if got := report.Tokens[0].Kind; got != Keyword {
+		t.Fatalf("report kind = %s, want keyword", got)
 	}
 }
 

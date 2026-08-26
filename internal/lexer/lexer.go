@@ -4,6 +4,8 @@ import (
 	"sort"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/sliverarmory/opfor/internal/envspec"
 )
 
 const (
@@ -14,46 +16,45 @@ const (
 	diagnosticMalformedEscape   = "LEX005"
 )
 
-var keywords = map[string]struct{}{
-	"alias":     {},
+var syntaxKeywords = map[string]struct{}{
 	"assert":    {},
 	"break":     {},
 	"callcc":    {},
 	"catch":     {},
-	"command":   {},
 	"continue":  {},
 	"done":      {},
 	"else":      {},
 	"false":     {},
-	"filter":    {},
 	"for":       {},
 	"foreach":   {},
 	"from":      {},
 	"halt":      {},
-	"hook":      {},
 	"if":        {},
 	"import":    {},
-	"inline":    {},
-	"item":      {},
-	"menu":      {},
-	"menubar":   {},
 	"new":       {},
-	"on":        {},
-	"popup":     {},
 	"report":    {},
 	"return":    {},
 	"separator": {},
-	"set":       {},
-	"ssh_alias": {},
-	"sub":       {},
 	"throw":     {},
 	"true":      {},
 	"try":       {},
 	"use":       {},
-	"when":      {},
 	"while":     {},
 	"yield":     {},
 }
+
+var keywords = func() map[string]struct{} {
+	result := make(map[string]struct{}, len(syntaxKeywords)+len(envspec.Builtins()))
+	for keyword := range syntaxKeywords {
+		result[keyword] = struct{}{}
+	}
+	for _, spec := range envspec.Builtins() {
+		if spec.LexicalKeyword {
+			result[spec.Keyword] = struct{}{}
+		}
+	}
+	return result
+}()
 
 var wordOperators = map[string]struct{}{
 	"cmp":      {},

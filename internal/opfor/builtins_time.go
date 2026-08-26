@@ -8,13 +8,18 @@ import (
 	"time"
 )
 
-func (r *Runtime) timeFunctions() map[string]NativeFunc {
+func (r *Runtime) sleepTimeFunctions() map[string]NativeFunc {
 	return map[string]NativeFunc{
-		"dstamp":     r.dstamp,
 		"formatDate": r.formatDate,
 		"parseDate":  r.parseDate,
 		"ticks":      r.ticks,
-		"tstamp":     r.tstamp,
+	}
+}
+
+func (r *Runtime) aggressorTimeFunctions() map[string]NativeFunc {
+	return map[string]NativeFunc{
+		"dstamp": r.dstamp,
+		"tstamp": r.tstamp,
 	}
 }
 

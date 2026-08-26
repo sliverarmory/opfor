@@ -4,26 +4,9 @@ import (
 	"strings"
 
 	"github.com/sliverarmory/opfor/internal/ast"
+	"github.com/sliverarmory/opfor/internal/envspec"
 	"github.com/sliverarmory/opfor/internal/lexer"
 )
-
-var environmentKeywords = map[string]struct{}{
-	"alias":     {},
-	"bind":      {},
-	"command":   {},
-	"filter":    {},
-	"hook":      {},
-	"inline":    {},
-	"item":      {},
-	"menu":      {},
-	"menubar":   {},
-	"on":        {},
-	"popup":     {},
-	"set":       {},
-	"ssh_alias": {},
-	"sub":       {},
-	"when":      {},
-}
 
 func (p *parser) parseStatement() ast.Stmt {
 	switch {
@@ -551,8 +534,18 @@ func (p *parser) environmentForm(keyword string) (ast.EnvironmentForm, bool) {
 	if form, ok := p.options.Environments[keyword]; ok {
 		return form, true
 	}
-	_, ok := environmentKeywords[keyword]
-	return ast.OrdinaryEnvironment, ok
+	spec, ok := envspec.Lookup(keyword)
+	if !ok {
+		return ast.OrdinaryEnvironment, false
+	}
+	switch spec.Form {
+	case envspec.Filter:
+		return ast.FilterEnvironment, true
+	case envspec.Predicate:
+		return ast.PredicateEnvironment, true
+	default:
+		return ast.OrdinaryEnvironment, true
+	}
 }
 
 func (p *parser) parsePredicateEnvironment(keyword lexer.Token) ast.Stmt {

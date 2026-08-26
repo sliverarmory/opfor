@@ -9,10 +9,16 @@ import (
 	"testing"
 )
 
+func newAggressorBOFPackTestRuntime(encoder BeaconStringEncoder) *Runtime {
+	return &Runtime{aggressorState: aggressorState{
+		aggressorIntegrationConfig: aggressorIntegrationConfig{beaconEncoder: encoder},
+	}}
+}
+
 func TestAggressorBOFPackMixedFormatsExactBytesAndNoOuterPrefix(t *testing.T) {
 	t.Parallel()
 
-	runtime := &Runtime{beaconEncoder: utf8BeaconStringEncoder{}}
+	runtime := newAggressorBOFPackTestRuntime(utf8BeaconStringEncoder{})
 	got := mustCallAggressorBOFPack(t, runtime, context.Background(),
 		String("beacon-7"),
 		String("biszZ"),
@@ -47,7 +53,7 @@ func TestAggressorBOFPackMixedFormatsExactBytesAndNoOuterPrefix(t *testing.T) {
 func TestAggressorBOFPackSignedAndNarrowNumericBits(t *testing.T) {
 	t.Parallel()
 
-	runtime := &Runtime{beaconEncoder: utf8BeaconStringEncoder{}}
+	runtime := newAggressorBOFPackTestRuntime(utf8BeaconStringEncoder{})
 	got := mustCallAggressorBOFPack(t, runtime, context.Background(),
 		String("beacon"), String("isis"),
 		Int(-2), Int(-2), Long(1<<32+1), Long(1<<16+1),
@@ -66,7 +72,7 @@ func TestAggressorBOFPackSignedAndNarrowNumericBits(t *testing.T) {
 func TestAggressorBOFPackPreservesExactUTF16Units(t *testing.T) {
 	t.Parallel()
 
-	runtime := &Runtime{beaconEncoder: utf8BeaconStringEncoder{}}
+	runtime := newAggressorBOFPackTestRuntime(utf8BeaconStringEncoder{})
 	text := sleepStringValueFromUnits([]uint16{0x0041, 0xd800, 0x0042, 0xdc00}, nil)
 	got := mustCallAggressorBOFPack(t, runtime, context.Background(),
 		String("beacon"), String("bZ"), text, text)
@@ -83,7 +89,7 @@ func TestAggressorBOFPackPreservesExactUTF16Units(t *testing.T) {
 func TestAggressorBOFPackZeroTerminatedFormatsStopAtFirstNUL(t *testing.T) {
 	t.Parallel()
 
-	runtime := &Runtime{beaconEncoder: utf8BeaconStringEncoder{}}
+	runtime := newAggressorBOFPackTestRuntime(utf8BeaconStringEncoder{})
 	value := sleepStringValueFromUnits([]uint16{'A', 0, 'B'}, nil)
 	got := mustCallAggressorBOFPack(t, runtime, context.Background(),
 		String("beacon"), String("bzZ"), value, value, value)
@@ -107,7 +113,7 @@ func TestAggressorBOFPackCustomEncoderReceivesBeaconAndText(t *testing.T) {
 	wantText := BinaryString([]byte{0x80, 'A'})
 	var seenBeacon, seenText Value
 	var sawContext bool
-	runtime := &Runtime{beaconEncoder: BeaconStringEncoderFunc(func(
+	runtime := newAggressorBOFPackTestRuntime(BeaconStringEncoderFunc(func(
 		ctx context.Context,
 		beaconID Value,
 		text Value,
@@ -116,7 +122,7 @@ func TestAggressorBOFPackCustomEncoderReceivesBeaconAndText(t *testing.T) {
 		seenText = text
 		sawContext = ctx.Value(contextKey{}) == "present"
 		return []byte{0x81, 0x82, 0xfe}, nil
-	})}
+	}))
 
 	ctx := context.WithValue(context.Background(), contextKey{}, "present")
 	got := mustCallAggressorBOFPack(t, runtime, ctx, wantBeacon, String("z"), wantText)
@@ -165,14 +171,14 @@ func TestAggressorBOFPackHonorsContextCancellation(t *testing.T) {
 
 	t.Run("before packing", func(t *testing.T) {
 		called := false
-		runtime := &Runtime{beaconEncoder: BeaconStringEncoderFunc(func(
+		runtime := newAggressorBOFPackTestRuntime(BeaconStringEncoderFunc(func(
 			context.Context,
 			Value,
 			Value,
 		) ([]byte, error) {
 			called = true
 			return []byte("unreachable"), nil
-		})}
+		}))
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 		_, err := runtime.builtinAggressorBOFPack(ctx,
@@ -184,14 +190,14 @@ func TestAggressorBOFPackHonorsContextCancellation(t *testing.T) {
 
 	t.Run("during custom encoding", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
-		runtime := &Runtime{beaconEncoder: BeaconStringEncoderFunc(func(
+		runtime := newAggressorBOFPackTestRuntime(BeaconStringEncoderFunc(func(
 			context.Context,
 			Value,
 			Value,
 		) ([]byte, error) {
 			cancel()
 			return []byte("encoded"), nil
-		})}
+		}))
 		_, err := runtime.builtinAggressorBOFPack(ctx,
 			bofPackTestInvocation(String("beacon"), String("z"), String("text")))
 		if !errors.Is(err, context.Canceled) {
@@ -203,7 +209,7 @@ func TestAggressorBOFPackHonorsContextCancellation(t *testing.T) {
 func TestAggressorBOFPackRejectsInvalidFormatAndArity(t *testing.T) {
 	t.Parallel()
 
-	runtime := &Runtime{beaconEncoder: utf8BeaconStringEncoder{}}
+	runtime := newAggressorBOFPackTestRuntime(utf8BeaconStringEncoder{})
 	tests := []struct {
 		name     string
 		values   []Value

@@ -49,56 +49,30 @@ const (
 )
 
 type runtimeConfig struct {
-	stdin                             io.Reader
-	stdout                            io.Writer
-	stderr                            io.Writer
-	host                              Host
-	objectHost                        ObjectHost
-	loadableProvider                  LoadableProvider
-	observer                          BindingObserver
-	lifecycle                         ScriptLifecycleObserver
-	variableProvider                  VariableProvider
-	sourceResolver                    SourceResolver
-	sleepClasspath                    string
-	sleepClasspathSet                 bool
-	initialGlobals                    map[string]Value
-	functions                         map[string]NativeFunc
-	environments                      map[string]EnvironmentKind
-	limits                            Limits
-	resources                         *runtimeResourceAccount
-	includeCycles                     IncludeCyclePolicy
-	clock                             Clock
-	beaconEncoder                     BeaconStringEncoder
-	eventDispatcher                   AggressorEventDispatcher
-	aggressorBeaconTranscriptSink     AggressorBeaconTranscriptSink
-	aggressorBeaconActionProvider     AggressorBeaconActionProvider
-	aggressorBeaconExecutionProvider  AggressorBeaconExecutionProvider
-	aggressorBOFExtractor             AggressorBOFExtractor
-	aggressorArtifactProvider         AggressorArtifactProvider
-	aggressorPayloadProvider          AggressorPayloadProvider
-	aggressorListenerProvider         AggressorListenerProvider
-	aggressorPayloadStoreProvider     AggressorPayloadStoreProvider
-	aggressorSiteProvider             AggressorSiteProvider
-	aggressorTeamServerRPCProvider    AggressorTeamServerRPCProvider
-	aggressorSessionQueryProvider     AggressorSessionQueryProvider
-	aggressorDataModelQueryProvider   AggressorDataModelQueryProvider
-	aggressorDataStoreProvider        AggressorDataStoreProvider
-	aggressorPreferenceProvider       AggressorPreferenceProvider
-	aggressorCodeTransformProvider    AggressorCodeTransformProvider
-	aggressorProcessInjectionProvider AggressorProcessInjectionProvider
-	aggressorProfileProvider          AggressorProfileProvider
-	aggressorVPNProvider              AggressorVPNProvider
-	aggressorPEProvider               AggressorPEProvider
-	aggressorClientServiceProvider    AggressorClientServiceProvider
-	aggressorClientUIProvider         AggressorClientUIProvider
-	aggressorDialogProvider           AggressorDialogProvider
-	aggressorPromptProvider           AggressorPromptProvider
-	aggressorBreakpointProvider       AggressorBreakpointProvider
-	debugFlags                        int32
-	taintMode                         bool
-	taintPolicies                     map[string]TaintPolicy
-	aggressorCommands                 map[AggressorCommandKind]AggressorCommandCatalog
-	aggressorBeaconTechniques         map[AggressorBeaconTechniqueKind]AggressorBeaconTechniqueCatalog
+	stdin             io.Reader
+	stdout            io.Writer
+	stderr            io.Writer
+	host              Host
+	objectHost        ObjectHost
+	loadableProvider  LoadableProvider
+	observer          BindingObserver
+	lifecycle         ScriptLifecycleObserver
+	variableProvider  VariableProvider
+	sourceResolver    SourceResolver
+	sleepClasspath    string
+	sleepClasspathSet bool
+	initialGlobals    map[string]Value
+	functions         map[string]NativeFunc
+	environments      map[string]EnvironmentKind
+	limits            Limits
+	resources         *runtimeResourceAccount
+	includeCycles     IncludeCyclePolicy
+	clock             Clock
+	extensionProfiles []runtimeExtensionProfile
+	aggressorConfig
+	debugFlags    int32
+	taintMode     bool
+	taintPolicies map[string]TaintPolicy
 }
 
 // Runtime is an isolated OPFOR execution environment. A Runtime owns globals,
@@ -142,67 +116,39 @@ type Runtime struct {
 	// portable defaults installed into functions. Evaluator intrinsics such as
 	// find and setf need this distinction so WithFunction/RegisterFunction can
 	// shadow their AST-sensitive fallback implementations.
-	explicitFunctions                 map[string]struct{}
-	scripts                           map[ScriptID]*Script
-	lifecycleScripts                  map[ScriptID]struct{}
-	bindings                          map[BindingKind]map[string][]Binding
-	bindingOrder                      map[BindingKind][]Binding
-	initialGlobals                    map[string]Value
-	environments                      map[string]EnvironmentKind
-	nextScript                        ScriptID
-	nextProxy                         uint64
-	nextAggressorDialog               AggressorDialogID
-	nextAggressorPrompt               AggressorPromptID
-	closing                           bool
-	closed                            bool
-	closeDone                         chan struct{}
-	closeErr                          error
-	closeErrDelivered                 bool
-	executionCtx                      context.Context
-	executionCancel                   context.CancelFunc
-	executions                        uint64
-	executionDone                     chan struct{}
-	printStream                       *portableJavaPrintStream
-	fixtureObjects                    *portableFixtureObjectState
-	socketState                       *sleepSocketState
-	readTasks                         map[*sleepReadTask]struct{}
-	processes                         map[*processObject]struct{}
-	maxInstructions                   uint64
-	limits                            Limits
-	resources                         *runtimeResourceAccount
-	includeCycles                     IncludeCyclePolicy
-	clock                             Clock
-	beaconEncoder                     BeaconStringEncoder
-	eventDispatcher                   AggressorEventDispatcher
-	aggressorBeaconTranscriptSink     AggressorBeaconTranscriptSink
-	aggressorBeaconActionProvider     AggressorBeaconActionProvider
-	aggressorBeaconExecutionProvider  AggressorBeaconExecutionProvider
-	aggressorBOFExtractor             AggressorBOFExtractor
-	aggressorArtifactProvider         AggressorArtifactProvider
-	aggressorPayloadProvider          AggressorPayloadProvider
-	aggressorListenerProvider         AggressorListenerProvider
-	aggressorPayloadStoreProvider     AggressorPayloadStoreProvider
-	aggressorSiteProvider             AggressorSiteProvider
-	aggressorTeamServerRPCProvider    AggressorTeamServerRPCProvider
-	aggressorSessionQueryProvider     AggressorSessionQueryProvider
-	aggressorDataModelQueryProvider   AggressorDataModelQueryProvider
-	aggressorDataStoreProvider        AggressorDataStoreProvider
-	aggressorPreferenceProvider       AggressorPreferenceProvider
-	aggressorCodeTransformProvider    AggressorCodeTransformProvider
-	aggressorProcessInjectionProvider AggressorProcessInjectionProvider
-	aggressorProfileProvider          AggressorProfileProvider
-	aggressorVPNProvider              AggressorVPNProvider
-	aggressorPEProvider               AggressorPEProvider
-	aggressorClientServiceProvider    AggressorClientServiceProvider
-	aggressorClientUIProvider         AggressorClientUIProvider
-	aggressorDialogProvider           AggressorDialogProvider
-	aggressorPromptProvider           AggressorPromptProvider
-	aggressorBreakpointProvider       AggressorBreakpointProvider
-	debugFlags                        int32
-	taintMode                         bool
-	taintPolicies                     map[string]TaintPolicy
-	aggressorCommands                 *aggressorCommandState
-	aggressorBeaconTechniques         *aggressorBeaconTechniqueState
+	explicitFunctions map[string]struct{}
+	scripts           map[ScriptID]*Script
+	lifecycleScripts  map[ScriptID]struct{}
+	bindings          map[BindingKind]map[string][]Binding
+	bindingOrder      map[BindingKind][]Binding
+	initialGlobals    map[string]Value
+	environments      map[string]EnvironmentKind
+	nextScript        ScriptID
+	nextProxy         uint64
+	aggressorState
+	closing           bool
+	closed            bool
+	closeDone         chan struct{}
+	closeErr          error
+	closeErrDelivered bool
+	executionCtx      context.Context
+	executionCancel   context.CancelFunc
+	executions        uint64
+	executionDone     chan struct{}
+	printStream       *portableJavaPrintStream
+	fixtureObjects    *portableFixtureObjectState
+	socketState       *sleepSocketState
+	readTasks         map[*sleepReadTask]struct{}
+	processes         map[*processObject]struct{}
+	maxInstructions   uint64
+	limits            Limits
+	resources         *runtimeResourceAccount
+	includeCycles     IncludeCyclePolicy
+	clock             Clock
+	extensionProfiles []runtimeExtensionProfile
+	debugFlags        int32
+	taintMode         bool
+	taintPolicies     map[string]TaintPolicy
 
 	evalMu     sync.Mutex
 	evalScript *Script
@@ -223,18 +169,18 @@ func (r *Runtime) ID() RuntimeID {
 // extension boundary, not a sandbox for those builtins.
 func New(options ...Option) (*Runtime, error) {
 	config := runtimeConfig{
-		stdin:           os.Stdin,
-		stdout:          os.Stdout,
-		stderr:          os.Stderr,
-		host:            unsupportedHost{},
-		objectHost:      unsupportedObjectHost{},
-		functions:       make(map[string]NativeFunc),
-		environments:    make(map[string]EnvironmentKind),
-		clock:           systemClock{},
-		beaconEncoder:   utf8BeaconStringEncoder{},
-		eventDispatcher: synchronousAggressorEventDispatcher{},
-		debugFlags:      1,
-		taintPolicies:   make(map[string]TaintPolicy),
+		stdin:             os.Stdin,
+		stdout:            os.Stdout,
+		stderr:            os.Stderr,
+		host:              unsupportedHost{},
+		objectHost:        unsupportedObjectHost{},
+		functions:         make(map[string]NativeFunc),
+		environments:      make(map[string]EnvironmentKind),
+		clock:             systemClock{},
+		extensionProfiles: defaultRuntimeExtensionProfiles(),
+		aggressorConfig:   defaultAggressorConfig(),
+		debugFlags:        1,
+		taintPolicies:     make(map[string]TaintPolicy),
 	}
 	for _, option := range options {
 		if option == nil {
@@ -263,62 +209,36 @@ func New(options ...Option) (*Runtime, error) {
 	}
 
 	runtime := &Runtime{
-		id:                                nextRuntimeID(),
-		stdin:                             config.stdin,
-		stdout:                            synchronizedWriter{mutex: outputMutex, writer: newRuntimeOutputWriter(resources, config.stdout)},
-		stderr:                            synchronizedWriter{mutex: outputMutex, writer: newRuntimeOutputWriter(resources, config.stderr)},
-		host:                              config.host,
-		loadableProvider:                  config.loadableProvider,
-		observer:                          config.observer,
-		lifecycle:                         config.lifecycle,
-		variableProvider:                  config.variableProvider,
-		resolver:                          config.sourceResolver,
-		defaultFileResolver:               defaultFileResolver,
-		functions:                         make(map[string]NativeFunc, len(config.functions)),
-		stockFunctions:                    make(map[string]NativeFunc),
-		explicitFunctions:                 make(map[string]struct{}, len(config.functions)),
-		scripts:                           make(map[ScriptID]*Script),
-		lifecycleScripts:                  make(map[ScriptID]struct{}),
-		bindings:                          make(map[BindingKind]map[string][]Binding),
-		bindingOrder:                      make(map[BindingKind][]Binding),
-		initialGlobals:                    cloneInitialGlobals(config.initialGlobals),
-		environments:                      make(map[string]EnvironmentKind, len(config.environments)),
-		maxInstructions:                   config.limits.MaxInstructionsPerExecution,
-		limits:                            config.limits,
-		resources:                         resources,
-		includeCycles:                     config.includeCycles,
-		clock:                             config.clock,
-		beaconEncoder:                     config.beaconEncoder,
-		eventDispatcher:                   config.eventDispatcher,
-		aggressorBeaconTranscriptSink:     config.aggressorBeaconTranscriptSink,
-		aggressorBeaconActionProvider:     config.aggressorBeaconActionProvider,
-		aggressorBeaconExecutionProvider:  config.aggressorBeaconExecutionProvider,
-		aggressorBOFExtractor:             config.aggressorBOFExtractor,
-		aggressorArtifactProvider:         config.aggressorArtifactProvider,
-		aggressorPayloadProvider:          config.aggressorPayloadProvider,
-		aggressorListenerProvider:         config.aggressorListenerProvider,
-		aggressorPayloadStoreProvider:     config.aggressorPayloadStoreProvider,
-		aggressorSiteProvider:             config.aggressorSiteProvider,
-		aggressorTeamServerRPCProvider:    config.aggressorTeamServerRPCProvider,
-		aggressorSessionQueryProvider:     config.aggressorSessionQueryProvider,
-		aggressorDataModelQueryProvider:   config.aggressorDataModelQueryProvider,
-		aggressorDataStoreProvider:        config.aggressorDataStoreProvider,
-		aggressorPreferenceProvider:       config.aggressorPreferenceProvider,
-		aggressorCodeTransformProvider:    config.aggressorCodeTransformProvider,
-		aggressorProcessInjectionProvider: config.aggressorProcessInjectionProvider,
-		aggressorProfileProvider:          config.aggressorProfileProvider,
-		aggressorVPNProvider:              config.aggressorVPNProvider,
-		aggressorPEProvider:               config.aggressorPEProvider,
-		aggressorClientServiceProvider:    config.aggressorClientServiceProvider,
-		aggressorClientUIProvider:         config.aggressorClientUIProvider,
-		aggressorDialogProvider:           config.aggressorDialogProvider,
-		aggressorPromptProvider:           config.aggressorPromptProvider,
-		aggressorBreakpointProvider:       config.aggressorBreakpointProvider,
-		debugFlags:                        config.debugFlags,
-		taintMode:                         config.taintMode,
-		taintPolicies:                     make(map[string]TaintPolicy, len(config.taintPolicies)),
-		aggressorCommands:                 newAggressorCommandState(config.aggressorCommands),
-		aggressorBeaconTechniques:         newAggressorBeaconTechniqueState(config.aggressorBeaconTechniques),
+		id:                  nextRuntimeID(),
+		stdin:               config.stdin,
+		stdout:              synchronizedWriter{mutex: outputMutex, writer: newRuntimeOutputWriter(resources, config.stdout)},
+		stderr:              synchronizedWriter{mutex: outputMutex, writer: newRuntimeOutputWriter(resources, config.stderr)},
+		host:                config.host,
+		loadableProvider:    config.loadableProvider,
+		observer:            config.observer,
+		lifecycle:           config.lifecycle,
+		variableProvider:    config.variableProvider,
+		resolver:            config.sourceResolver,
+		defaultFileResolver: defaultFileResolver,
+		functions:           make(map[string]NativeFunc, len(config.functions)),
+		stockFunctions:      make(map[string]NativeFunc),
+		explicitFunctions:   make(map[string]struct{}, len(config.functions)),
+		scripts:             make(map[ScriptID]*Script),
+		lifecycleScripts:    make(map[ScriptID]struct{}),
+		bindings:            make(map[BindingKind]map[string][]Binding),
+		bindingOrder:        make(map[BindingKind][]Binding),
+		initialGlobals:      cloneInitialGlobals(config.initialGlobals),
+		environments:        make(map[string]EnvironmentKind, len(config.environments)),
+		maxInstructions:     config.limits.MaxInstructionsPerExecution,
+		limits:              config.limits,
+		resources:           resources,
+		includeCycles:       config.includeCycles,
+		clock:               config.clock,
+		extensionProfiles:   cloneRuntimeExtensionProfiles(config.extensionProfiles),
+		aggressorState:      newAggressorState(config.aggressorConfig),
+		debugFlags:          config.debugFlags,
+		taintMode:           config.taintMode,
+		taintPolicies:       make(map[string]TaintPolicy, len(config.taintPolicies)),
 	}
 	runtime.objectHost = defaultObjectHost{runtime: runtime, primary: config.objectHost}
 	runtime.executionCtx, runtime.executionCancel = context.WithCancel(context.Background())

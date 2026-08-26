@@ -6,7 +6,23 @@ import (
 	"strings"
 )
 
-func (r *Runtime) runtimeFunctions() map[string]NativeFunc {
+// sleepRuntimeFunctions returns the stock Sleep runtime helpers that depend on
+// the active Script or Runtime rather than one of the narrower bridge tranches.
+func (r *Runtime) sleepRuntimeFunctions() map[string]NativeFunc {
+	return map[string]NativeFunc{
+		"checkError": r.checkError,
+		"debug":      r.debug,
+		"exit":       builtinExit,
+		"profile":    r.profile,
+		"use":        r.useLoadable,
+		"watch":      r.watch,
+	}
+}
+
+// aggressorRuntimeFunctions returns the complete Aggressor runtime surface,
+// including portable helpers and typed-provider wrappers. The narrower
+// client-independent Aggressor tranches are composed by aggressorFunctions.
+func (r *Runtime) aggressorRuntimeFunctions() map[string]NativeFunc {
 	functions := map[string]NativeFunc{
 		"alias":                              r.registerAlias,
 		"alias_clear":                        r.clearAlias,
@@ -42,10 +58,7 @@ func (r *Runtime) runtimeFunctions() map[string]NativeFunc {
 		"bremote_exec":                       r.bremoteExec,
 		"btask":                              r.btask,
 		"btaskcompleted":                     r.btaskcompleted,
-		"checkError":                         r.checkError,
-		"debug":                              r.debug,
 		"dispatch_event":                     r.dispatchEvent,
-		"exit":                               builtinExit,
 		"fireAlias":                          r.fireAlias,
 		"fireEvent":                          r.fireEvent,
 		"fire_event":                         r.fireEvent,
@@ -55,16 +68,13 @@ func (r *Runtime) runtimeFunctions() map[string]NativeFunc {
 		"item":                               r.registerMenuItem,
 		"menu":                               r.registerSubmenu,
 		"on":                                 r.registerEvent,
-		"profile":                            r.profile,
 		"ssh_alias":                          r.registerSSHAlias,
 		"ssh_command_describe":               r.sshCommandDescribe,
 		"ssh_command_detail":                 r.sshCommandDetail,
 		"ssh_command_group":                  r.sshCommandGroup,
 		"ssh_command_register":               r.sshCommandRegister,
 		"ssh_commands":                       r.sshCommands,
-		"use":                                r.useLoadable,
 		"unbind":                             r.clearKeyBinding,
-		"watch":                              r.watch,
 		"when":                               r.registerWhen,
 	}
 	for name, function := range r.aggressorPEFunctions() {
