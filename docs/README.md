@@ -1170,10 +1170,22 @@ system boundaries.
 
 ## CLI
 
-Build the Cobra-based interpreter and run a `.cna` or Sleep program directly:
+Install the Cobra-based interpreter with Go 1.24 or later:
 
 ```console
-go build -o opfor ./cmd/opfor
+go install github.com/sliverarmory/opfor/cmd/opfor@latest
+```
+
+From a source checkout, install that checkout with:
+
+```console
+go install ./cmd/opfor
+```
+
+Or build it in the repository root and run a `.cna` or Sleep program directly:
+
+```console
+make
 ./opfor script.cna argument-one argument-two
 ```
 

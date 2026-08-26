@@ -2,19 +2,21 @@
   <img src=".github/images/logo.png" alt="OPFOR logo" width="220">
 </p>
 
-OPFOR is a pure Go implementation of Sleep and Aggressor Script runtime.
+OPFOR is an independent, pure-Go runtime for the Sleep language and Cobalt
+Strike Aggressor Script (`.cna`). The same engine is available as an embeddable
+Go package and as the offline `opfor` CLI, so applications can host scripts and
+operators can evaluate, validate, and run them without a JVM.
 
+OPFOR owns parsing, compilation, execution, portable Sleep built-ins, script
+lifecycle, events, hooks, and callbacks. Embedding applications supply
+Cobalt-specific state and effects—such as Team Server transport, Beacon
+tasking, payload generation, UI, and data stores—through explicit host
+interfaces. OPFOR is not a Cobalt Strike client or Team Server, and the CLI
+does not connect or authenticate to one.
 
 ## Embed OPFOR
 
-Requires Go 1.24 or later.
-
-```sh
-go get github.com/sliverarmory/opfor
-```
-
-Compile a program once, create a runtime, and execute it with optional
-arguments:
+Create a runtime and evaluate a source string:
 
 ```go
 package main
@@ -28,78 +30,53 @@ import (
 
 func main() {
 	ctx := context.Background()
-
-	program, err := opfor.CompileString("hello.cna", `
-sub greeting {
-    return "hello " . $1;
-}
-println(greeting(@ARGV[0]));
-`)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	runtime, err := opfor.New()
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer runtime.Close(ctx)
 
-	if _, err := runtime.Execute(ctx, program, opfor.String("operator")); err != nil {
+	if _, err := runtime.Eval(ctx, "hello.sl", `println("hello from OPFOR");`); err != nil {
 		log.Fatal(err)
 	}
 }
 ```
 
-`println` writes to standard output by default. Use `WithStdin`, `WithStdout`,
-and `WithStderr` to replace the process streams.
-
-## Connect Cobalt functionality
-
-OPFOR owns parsing, execution, callbacks, and script lifecycle. The importing
-application owns Cobalt-specific effects such as Team Server transport, Beacon
-tasking, payload generation, UI, and data stores.
-
-Install only the typed providers your application supports:
-
-```go
-provider := opfor.AggressorBeaconActionProviderFunc(func(
-	_ context.Context,
-	action opfor.AggressorBeaconAction,
-) error {
-	log.Printf("%s beacon=%s args=%v", action.Name, action.Target, action.Arguments)
-	return nil
-})
-
-runtime, err := opfor.New(
-	opfor.WithAggressorBeaconActionProvider(provider),
-)
-if err != nil {
-	log.Fatal(err)
-}
-defer runtime.Close(context.Background())
-```
-
-`WithFunction` registers an exact native function, while `WithHost` provides a
-generic fallback for unresolved Aggressor calls. Unsupported operations return
-explicit errors instead of silently pretending that a Team Server action
-succeeded.
+This prints `hello from OPFOR`. `Eval` compiles and runs source in one call; use
+`CompileString` and `Runtime.Execute` when a program will be reused. `println`
+writes to standard output by default. Use `WithStdin`, `WithStdout`, and
+`WithStderr` to replace the process streams.
 
 ## CLI
 
-Build the `opfor` interpreter:
+Install the `opfor` interpreter with Go 1.24 or later:
 
 ```sh
-go build -o opfor ./cmd/opfor
+go install github.com/sliverarmory/opfor/cmd/opfor@latest
+```
+
+From a source checkout, install that checkout with:
+
+```sh
+go install ./cmd/opfor
+```
+
+Or build it in the repository root:
+
+```sh
+make
 ```
 
 Then evaluate an expression, validate a script, or run it:
 
 ```sh
 ./opfor eval '2 + 2'
-./opfor check example.cna
-./opfor run example.cna arg1 arg2
+./opfor check examples/01-hello.sl
+./opfor run examples/01-hello.sl operator
 ```
+
+See [`examples/`](examples/) for runnable scripts that use only stock Sleep
+syntax and built-ins.
 
 Running `./opfor` without arguments prints the complete command help. The CLI
 is an offline interpreter; it does not connect or log in to a Cobalt Strike
