@@ -6,4 +6,6 @@
 /docs/*
 !/docs/README.md
 !/docs/aggressor-script-extensions.md
+!/docs/aggressor/
+!/docs/aggressor/*.md
 .DS_Store
