@@ -1,0 +1,3664 @@
+{
+  "schema_version": 1,
+  "description": "Commit-pinned conformance sources and supporting fixtures vendored for OPFOR; file hashes cover exact upstream bytes.",
+  "corpora": [
+    {
+      "id": "sleep-2.1-reference",
+      "name": "Canonical Sleep 2.1 regression programs and golden output",
+      "upstream": {
+        "repository": "https://github.com/Cobalt-Strike/sleep",
+        "commit": "60ac3ff9dacc3e7b5a6c58be201c5830afbda398",
+        "source_url": "https://github.com/Cobalt-Strike/sleep/tree/60ac3ff9dacc3e7b5a6c58be201c5830afbda398/tests"
+      },
+      "license": {
+        "spdx": "BSD-3-Clause",
+        "path": "third_party_licenses/Cobalt-Strike-sleep-BSD-3-Clause.txt",
+        "sha256": "9f3d9cd86bd76547e36b7c1eb576a176feb3e07801eae8823cd93219068be765"
+      },
+      "modes": [
+        "parse",
+        "execute-golden"
+      ],
+      "requirements": [
+        "sleep-2.1-language"
+      ],
+      "conditional_requirements": [
+        "filesystem",
+        "java-interop",
+        "network",
+        "process-execution",
+        "serialization",
+        "threads-and-coroutines"
+      ],
+      "collections": [
+        {
+          "role": "program",
+          "root": "testdata/upstream/sleep-2.1/programs",
+          "glob": "*.sl",
+          "count": 342
+        },
+        {
+          "role": "golden",
+          "root": "testdata/upstream/sleep-2.1/golden",
+          "glob": "*.sl",
+          "count": 342
+        },
+        {
+          "role": "fixture-data",
+          "root": "testdata/upstream/sleep-2.1/fixtures/data",
+          "glob": "*",
+          "count": 4
+        },
+        {
+          "role": "fixture-data2",
+          "root": "testdata/upstream/sleep-2.1/fixtures/data2",
+          "glob": "*",
+          "count": 2
+        },
+        {
+          "role": "fixture-data3",
+          "root": "testdata/upstream/sleep-2.1/fixtures/data3",
+          "glob": "*",
+          "count": 3
+        }
+      ],
+      "files": [
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/accum.sl",
+          "role": "golden",
+          "sha256": "7fd25c8e6a268aca4b8b26998bee1410f4e17cae51222a7ddef1803c3affb7aa"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/addattest.sl",
+          "role": "golden",
+          "sha256": "494094dadfbfc63b01a40262c246c6de3a6167b7b833a91657faeb7a983189c7"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/addhash.sl",
+          "role": "golden",
+          "sha256": "3da6b5fac4d84c049c8ff994ab4ccc551d3514984498269e9606342915d09a83"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/addtest.sl",
+          "role": "golden",
+          "sha256": "e623fda7b678d6264befd9bcd65cd42e6b6afc3138a4053ecbcaf5fa286110fc"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/align.sl",
+          "role": "golden",
+          "sha256": "0f4abd05a5d845cb442f976bee3fc1eae5636fe2fea8dcb6a7c5988a3605787b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/align2.sl",
+          "role": "golden",
+          "sha256": "0827c12312423742fb736547bb5b19482ab2f51e2c90a25401b40e25bdaf6ecc"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/argarr.sl",
+          "role": "golden",
+          "sha256": "d8f13b032d4f7b31b2d05c4a14a88a720982416bbd5bbb9bcf72ee3bdaf5050e"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/argerr.sl",
+          "role": "golden",
+          "sha256": "e296b144db8319c8ea41155e0c1464c871648bf84e78d30aff945fc874525427"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/args.sl",
+          "role": "golden",
+          "sha256": "28766176248c6b2cf4a666431db09778e8937147d68c1db09666962a0adf97f6"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/arrays.sl",
+          "role": "golden",
+          "sha256": "8458760d6c4ce9ba49896d406c954fc2fbe50a60c66f18b621f0af4e4ca096c1"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/arrayself.sl",
+          "role": "golden",
+          "sha256": "1e5eb597436e9ca14a7b24d05a5fddbaeb29a303f28f399c512bdf5c9d76f9b7"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/arraysneg.sl",
+          "role": "golden",
+          "sha256": "bad3db46ad7b8eb9e7c1fee8af8f25db2503821c3cebd02224b90f1372d7ec73"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/arrmods.sl",
+          "role": "golden",
+          "sha256": "8ad907cfb2c51bfa97df4c553a83f1b3077326c0d3ef773a84ee4921c29ee3cd"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/asis.sl",
+          "role": "golden",
+          "sha256": "9d5dfe32f2db423d258c05d8a3a4b8876ccd453f2abcb135d3cdb9db72258e86"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/assert.sl",
+          "role": "golden",
+          "sha256": "8fb94ebe335cf99f2e7eca8523cac4075ed003b8fda59ef49fcb3997b4b082da"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/assert2.sl",
+          "role": "golden",
+          "sha256": "3d62f9ad3c6a9b88c46cc4a74520599de3588473af3aab255c96944a5f828040"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/assertcompare.sl",
+          "role": "golden",
+          "sha256": "59dd4a017e63f962f91d67abdcbb670e69aaa8c92721b4667f953be3ffd04a92"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/assertp.sl",
+          "role": "golden",
+          "sha256": "9f6ceda2575f0551337c6dcfd808a51f6502b226518b79e2fab3a13431601e03"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/assignt.sl",
+          "role": "golden",
+          "sha256": "ff1006cb6b37410e39fb79c291661e4b8f8d07fdbd5d3f822565d27686978829"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/backtickin.sl",
+          "role": "golden",
+          "sha256": "744f686f151b1241f7afe69e4c953c2b344078453df12f3cf6aae2308c8ba139"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/bareword.sl",
+          "role": "golden",
+          "sha256": "c78f606433b6e217eeb489f1435bd1de812062e53c769fc254bf631bfbe4909a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/behavior.sl",
+          "role": "golden",
+          "sha256": "c880d4c6acf5aa38805220726d72b5fd77d09402961acc645c82f80c95965397"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/binary.sl",
+          "role": "golden",
+          "sha256": "4e70168a4e367762c033c43bad814de7b5653d50faa47e565e0e9a2b25eb6ab8"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/binarysz.sl",
+          "role": "golden",
+          "sha256": "f7f2e67e23317b35e0faf28c71128dffa510896481e7d342acfb79d077b3c1e8"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/blockskew.sl",
+          "role": "golden",
+          "sha256": "499e2af0f3564a9e50c582ed330d87bc45f31b721e8df31b9b910ed81f0ca716"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/border.sl",
+          "role": "golden",
+          "sha256": "36fb8a1301cd3d75643868b7c6a010d2b2eac73df871de3cdf0d3cd513c6ca6c"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/break.sl",
+          "role": "golden",
+          "sha256": "37ee0f00f5f02dfdf361114cf531d06da887c35647e53c5735551cc6387b8c17"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/breakfirst.sl",
+          "role": "golden",
+          "sha256": "6210981d4fcddaa2bfe7fdfdd704e39252c2a34e4deaf78e864395a053db8fb4"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/brokendec.sl",
+          "role": "golden",
+          "sha256": "f581cf2fd7de20d5597edb5bafd7c7e73b0424acdab1826bece8f6073a907d5d"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/brokentuple.sl",
+          "role": "golden",
+          "sha256": "32d2c920071a699bc2896bb523286ccfdcb40ed979100e1fa12a39e1f94bd7c5"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/brokeoper.sl",
+          "role": "golden",
+          "sha256": "7a98c97db778434845b690463525fb7806cfc7b79125b14866f8f82977e8275a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/btest.sl",
+          "role": "golden",
+          "sha256": "eef3c35576858aad5366faffa2162a7a069324b253506d776bfb04933e21dca3"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/buffer.sl",
+          "role": "golden",
+          "sha256": "087741e60e47dd7ee10028c8a0fd3166fdd2949e4ceddd82066bda7b798e8592"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/bugfix.sl",
+          "role": "golden",
+          "sha256": "8404ca7118a930dad5d98367337c2131aaa503199aacff84b2848e7da9c8691b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/byteconvert.sl",
+          "role": "golden",
+          "sha256": "306149550eabf27d03fbc39ab14d62405c58d6b9f61857d338aee88142272e0e"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/byteconvert2.sl",
+          "role": "golden",
+          "sha256": "0282034ed3fbd4f2e02cde2e4e830caf34fc605b554e73f620f2c7cc92fbc159"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/cache.sl",
+          "role": "golden",
+          "sha256": "48a2d3947d4955efd6dbacbb56a01103c3eac578c69af68b007b83abb85d2176"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/callcc.sl",
+          "role": "golden",
+          "sha256": "6cfb1618855c5b5309b9daf5d4806054caac6df6d3d18226f4471eeb44c5754f"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/callcc_foreach.sl",
+          "role": "golden",
+          "sha256": "29eb24ab3328046a0aa9677cbebaeb917172816d248fa5865f7ec4d8d500117b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/callcc_ifonce.sl",
+          "role": "golden",
+          "sha256": "456604d5e696ec2463b9311dce223b6b166070c301ba359c085e14447de109d2"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/callcc_other_callers.sl",
+          "role": "golden",
+          "sha256": "88912e8112c44dc22c82ba623bccb015d926746dd2b70242e5bdd8bde2393382"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/callcc_prodcon.sl",
+          "role": "golden",
+          "sha256": "79f73d76df147094f6f183d5a44787abb56b31ef2b555412ffab448199345cb9"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/callcc_return.sl",
+          "role": "golden",
+          "sha256": "ffb78aa3b6ce9dc6b9ea28835dbb538128fa4d36b002ba3fb08105983b32e0a9"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/callcc_tcatch.sl",
+          "role": "golden",
+          "sha256": "adeaa7af06925b069cf36b22d7abd4cfa51158e58b8de72b9009b46d272ee5c6"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/callcc_tcatch2.sl",
+          "role": "golden",
+          "sha256": "1a99e158193a2c9ef45f599b8ff3c10f6f97e8a2e7521b7aea46989ab18c5b09"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/callcc_trycatch.sl",
+          "role": "golden",
+          "sha256": "50e581f89c0e72e54a1bb9b4b453526236bcac219d4c80b92c28e865b06f1d14"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/callccbg.sl",
+          "role": "golden",
+          "sha256": "a01332cf5256b36d4b5fa5bb33d387ad5832804a6fca6c019f538591b8d18cdd"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/callccfork.sl",
+          "role": "golden",
+          "sha256": "2fb9b57485acb52717e2a637f453ea4366b27d3f7a38397f4a975ea2d426e7a7"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/callccfreeze.sl",
+          "role": "golden",
+          "sha256": "49b2e685cafd34a50c5a110793868ec43bff9374b80142f84b3911b2395af6d2"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/callccpcon.sl",
+          "role": "golden",
+          "sha256": "84d6118028832f536e440bd4966b82c7575566f8f0e4b1af7c3de1022621b404"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/callccr.sl",
+          "role": "golden",
+          "sha256": "7e0047f44a3a46efa69facc90ceb478d42df77b073b694bf1d886ac58eab2c15"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/cast.sl",
+          "role": "golden",
+          "sha256": "1053b9a88a17d69d53ad5ff92622759049a55d984226a13a3ded4a8986da8394"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/castbug.sl",
+          "role": "golden",
+          "sha256": "51c57c295cbaf1ceccd34635ef04391457426b8759be1c89d2ea5761fba1fedb"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/charcheck.sl",
+          "role": "golden",
+          "sha256": "27ad65bdc19821f9a8842b5bcf50ad1833d32d9143b491a1b5d786482d1c5301"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/chdir.sl",
+          "role": "golden",
+          "sha256": "ed74fa163aa1735717e542fc855d574ccd76bfec4ba82097f5bc1a3455493c23"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/checksum.sl",
+          "role": "golden",
+          "sha256": "3813e817bece50d2249b8d68d7a3353ae9f423e5c7634cfe1adfb0fae1951173"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/clazz.sl",
+          "role": "golden",
+          "sha256": "1d3a9a420b43dacb1d058092355eae1a40e425fc8db8096bd5feb9ccae1b6feb"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/clmistake.sl",
+          "role": "golden",
+          "sha256": "2dfb5017f73e0b1fe5b6c0bf676404102192692d3f13b9ab2bd28ab0dd512420"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/closure.sl",
+          "role": "golden",
+          "sha256": "b61f03982f2c0c2806bec67ee407e5cf639ceba974228d23bd42ff1297328c1f"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/closure2.sl",
+          "role": "golden",
+          "sha256": "c0ece88100cae1fa28a6ff7deff343bd20f8f50fe87b3b6a0de865cdeaf259bd"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/closureindex.sl",
+          "role": "golden",
+          "sha256": "77cf5b0d08dd66fd7228fd7ec70cbc1c20256bb4ba7f79f2fed081599cf01013"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/closurekvp.sl",
+          "role": "golden",
+          "sha256": "40098a1aa6eade6fdb7ff3735d8a79daf29dbf1830a985dae92c59b1b5e59251"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/cmdline.sl",
+          "role": "golden",
+          "sha256": "7a14826ec9bc5ad2748d72f106134c731b8c9d4665403af406a634e2734e04cd"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/compile_cl.sl",
+          "role": "golden",
+          "sha256": "197b18d885354cdc4d7df6717656daa868bb45b7f14b9dacd958ee46bd963901"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/concat.sl",
+          "role": "golden",
+          "sha256": "a0fe8cc80ca9449a30996b3d6c54b54371e57b9b59558f235ccca6720c051cd1"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/concat2.sl",
+          "role": "golden",
+          "sha256": "ad7c8d0f1c4faf0e6a37432a502a321c760133c08c074b9824b2341cecc77dae"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/concaterrs.sl",
+          "role": "golden",
+          "sha256": "c655ac8ec69990cc83b62e87205fcc4d017bd5f63cfcb3a64071145ed1086d05"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/confused.sl",
+          "role": "golden",
+          "sha256": "9e560948e3d85e6b00852a76d6c203b8f4ad032e90ad32eb2021fca8483bd692"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/connpipe.sl",
+          "role": "golden",
+          "sha256": "07c503fa329bda43ba4d8cd1efab467515079801a0bbbac240f90711f673a5b2"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/continue.sl",
+          "role": "golden",
+          "sha256": "a02a3ad459f93d44a5f77912acf203da34ac7a1c4d6241b83682471a6d9acac9"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/convertds.sl",
+          "role": "golden",
+          "sha256": "619f80a3ff19435bc2eb05c16e7ee07561e9449b82638043de5069014a8968cd"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/convertds2.sl",
+          "role": "golden",
+          "sha256": "73393fe949c6e91c65868869074ee374d01e10620f54a0bfd7fe33134c96b1ee"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/convertds3.sl",
+          "role": "golden",
+          "sha256": "36ee6570b26216387e87711f97f9c8b438cb1f00d46488877c1c4f9b7b208c47"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/convertds4.sl",
+          "role": "golden",
+          "sha256": "df46860377c2b5bb850096020400e3e01282ed3682049c99f79dd68f207d28c2"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/copy.sl",
+          "role": "golden",
+          "sha256": "a3c5b2cfaa88a950fc33bfae9ba0769e2c2a36ec5fabd9229164c6065d55d491"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/cor_foreach.sl",
+          "role": "golden",
+          "sha256": "b55bb071035d4f459d327bbada40e1f98124a67bbffe96cd28ea83494797c732"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/cor_ifonce.sl",
+          "role": "golden",
+          "sha256": "456604d5e696ec2463b9311dce223b6b166070c301ba359c085e14447de109d2"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/cor_other_callers.sl",
+          "role": "golden",
+          "sha256": "88912e8112c44dc22c82ba623bccb015d926746dd2b70242e5bdd8bde2393382"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/cor_prodcon.sl",
+          "role": "golden",
+          "sha256": "79f73d76df147094f6f183d5a44787abb56b31ef2b555412ffab448199345cb9"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/cor_return.sl",
+          "role": "golden",
+          "sha256": "ffb78aa3b6ce9dc6b9ea28835dbb538128fa4d36b002ba3fb08105983b32e0a9"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/corrupt.sl",
+          "role": "golden",
+          "sha256": "189f5286a1d4efad375b47ac2e01252fd71434df0ab84a6a2210fddcc77fe51a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/corrupt1.sl",
+          "role": "golden",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/dataio.sl",
+          "role": "golden",
+          "sha256": "bd404687cbf464ec44f051096b67deffa19caa0f1eae1371a63c66ca5684e28b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/debug64.sl",
+          "role": "golden",
+          "sha256": "fd0a8800ef2b520bf655b06a59d4c5d125f79d1bae523db48b2ae22ef99c211c"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/debugce.sl",
+          "role": "golden",
+          "sha256": "970ea90e8c1d943900f613f325711b6c581bf7e3056fb24f6659c2cd59f22124"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/debugproxy.sl",
+          "role": "golden",
+          "sha256": "fb9ca8ddb72dcbc0c7efc1481d0977210cbae7e93a098fc4d1cf31593f59ca07"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/digest.sl",
+          "role": "golden",
+          "sha256": "0c84be5859b211c6937b993b251ff08e1034ba9b8b3c1f38267b16f3b6d74076"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/doubleship.sl",
+          "role": "golden",
+          "sha256": "d660748aca0ac331ffa95700ab29d88487549a446e8fbfc2ab9df79b8ab89934"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/dsliteral.sl",
+          "role": "golden",
+          "sha256": "57f506bcd8fa6a1b5c9ec70a9d458460b10401a8938bdfc4cbee0913a2724548"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/dtest1.sl",
+          "role": "golden",
+          "sha256": "f51f1d44472de879610442c4b20f0d5713d6eaf3f5dd2153dd947c10a1dc3c23"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/elfbug.sl",
+          "role": "golden",
+          "sha256": "979cf8ebd81ec7f716f0f1c7e46ef20c865a5e5f560774c635d46027cebeae22"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/errors1.sl",
+          "role": "golden",
+          "sha256": "50e61cd30ac6282ee1751926d1ebd5b1ae8b845992b9def13ecef367730f22d0"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/errors2.sl",
+          "role": "golden",
+          "sha256": "c3ec7705bea7dbc4419c2671b89ca56c40a8d354161ee66736a3ba652339240f"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/errors3.sl",
+          "role": "golden",
+          "sha256": "eee07d8193a5b902ce70c8b1110fcdd10f22fd9191736f27fb50d4691ee4e247"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/errors4.sl",
+          "role": "golden",
+          "sha256": "3156e534b8a1e9adf4c1be287edb52fd53aadd09365a1fa2389657a13f68350a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/errors5.sl",
+          "role": "golden",
+          "sha256": "cb02a6658b5a76b8667655778d7c42d2dfa8d76560b3caed5cbb7cc6abdaa531"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/excheck.sl",
+          "role": "golden",
+          "sha256": "c6d0c721e7e7b8047145c7945f3b5b867e317ccf4c2c0d87b226614adb19626a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/exotic_i.sl",
+          "role": "golden",
+          "sha256": "9dd50b958b3c924d502a9897da5a6a5d08a0490e2ac941d928cc8b1f437a2c86"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/expassign.sl",
+          "role": "golden",
+          "sha256": "510fcef8619a24e3ce4d8838394e3c00a262aa18419e4e723bfccf0ce6debaf8"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/fact.sl",
+          "role": "golden",
+          "sha256": "34e1f1c38bdb230087ab702f3a256f7c9a0f63ea5099760b89ac00ca02933e29"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/fe_generator.sl",
+          "role": "golden",
+          "sha256": "dc1d388dac62eeaa572d0f83a3d1a60ca656fad33f5458f39baa189318ba8686"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/fe_generatordb.sl",
+          "role": "golden",
+          "sha256": "f365cbb0680c94662480057ad4559e4746b4899bfd59817dcdf3817018adf9f8"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/fe_ohash.sl",
+          "role": "golden",
+          "sha256": "689f71ba8762d82ded535b510e9fbfd9823d1aa17d48de9bee3082fd04ea35bd"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/feloc.sl",
+          "role": "golden",
+          "sha256": "5a1abcc375cf08e3d9b043ac36a57c8745b81a1d0892cba497349e796465285f"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/femod.sl",
+          "role": "golden",
+          "sha256": "5efd5f020c4ca0c83a2e11547d488767093f24148aa61ec6d1503f3e0c7cf159"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/feprob.sl",
+          "role": "golden",
+          "sha256": "234e17724ac335ff2196847f99f0a75d429a678c7588fff1604a71aaed38535f"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/feremovetest.sl",
+          "role": "golden",
+          "sha256": "f4492b1fad000905c6f5ea76a12f2279a0c564f42138548e06a5ec891d7b0c18"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/fescope.sl",
+          "role": "golden",
+          "sha256": "63a416af30a201b6972e34254c05fdf639dc4d04feff06739303b9d62cf0c5d9"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/fetest.sl",
+          "role": "golden",
+          "sha256": "1ec5bedfbafe062af112e22d82d76437ee13ba771597a7792e4b8c4ce68c6fa9"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/find.sl",
+          "role": "golden",
+          "sha256": "e2106286317aae44f2b295b801aa20f1ea17ce1e771875e0a6af710b92a1b552"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/fob.sl",
+          "role": "golden",
+          "sha256": "601c4d42cee58d60ef9dedee58f36dd6b70694c997cd05e02b8033d3acaf27f8"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/for.sl",
+          "role": "golden",
+          "sha256": "789ade95aab8b913a8272b83eae0529494178b7d802a63c3b9105d65b7182c1c"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/forany.sl",
+          "role": "golden",
+          "sha256": "99781cfbe8034a8f2a4280dacf9db778fff01bbbd64a49450fa83fcb12e11102"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/foreach.sl",
+          "role": "golden",
+          "sha256": "c94682c77d921d6539e6cf84c3c76cad9f77bf70e61881dc2bbabf6010a3e20e"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/foreachrecurse.sl",
+          "role": "golden",
+          "sha256": "5ba00a032a92a1ecd3502721d8dd6ed4df6b9db00845ded0a0d68b6976c1fdb3"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/foreachrem.sl",
+          "role": "golden",
+          "sha256": "a66f17772e4d5c3109de218118c11769e6ab20859c63cfcf7aed1900b93a337b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/fork.sl",
+          "role": "golden",
+          "sha256": "51e667a9fb8563e85600b92324f415ffe1ff2d74adffd99f68236faec219c4ee"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/fork2.sl",
+          "role": "golden",
+          "sha256": "b53353c4afe052a00346ff0f1d284d6b6890d8ec1b6e17a00cfb89e1c4dc378a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/forkdl.sl",
+          "role": "golden",
+          "sha256": "82b254163f779b1ddc82dd7dcd67674672e1f6c95b3cbc9d4f157eb97865e613"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/forker.sl",
+          "role": "golden",
+          "sha256": "92222c22e80cb1c79d618b864a55f019f74b68b72be061ed39d256beb8e45537"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/forkof.sl",
+          "role": "golden",
+          "sha256": "fe369469a3d54e6a8ff34b0e29dcddb3d7524671d236fc00ba4ff76ee204492f"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/forkshare.sl",
+          "role": "golden",
+          "sha256": "ac95b6a5dfbefc46d5cbe8f48264322b38d1bff3df6be9e6ae899a9108f7ce50"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/forksubs.sl",
+          "role": "golden",
+          "sha256": "5be1f925b71f5c9c2404d40a128638cac42b939e0999f0a04fc408f671baa3c9"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/forplay.sl",
+          "role": "golden",
+          "sha256": "496bf0b9e129c645565983a7d90fc028d53d5978b883f408e24c970cae6f411c"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/fpfuncs.sl",
+          "role": "golden",
+          "sha256": "f75a27103bb19b39d5017193a102f7fb65f7b044451b60a4a302f66f2fc2cf2f"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/ftest.sl",
+          "role": "golden",
+          "sha256": "5707411bc1fee180389fdc7580255fd0a2b23cead4135dbc0f2488737dcca878"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/funchandle.sl",
+          "role": "golden",
+          "sha256": "b902b8eef1122eb26bfdfbdb45d1ea627964dc74f04f0a5f2fdfbddb2c79e4ae"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/functiondesc.sl",
+          "role": "golden",
+          "sha256": "cf32dfc590ab907e0e2216e5b9df9a9a88a19989565bcc0f0a02351fef09d09b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/functionerr.sl",
+          "role": "golden",
+          "sha256": "783869db9707bb3cd989d221b1a0c40e27b6ab019e0b01a60f57aaebece1851f"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/genfun.sl",
+          "role": "golden",
+          "sha256": "01e5936f0405d868bc4e4ac1599d2746a754241ec64098378bddd1b31b06eef8"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/graph.sl",
+          "role": "golden",
+          "sha256": "024d28b18151692d3bd44f7444c836897dbf07dc841f535c56f549d635f0850c"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/hash.sl",
+          "role": "golden",
+          "sha256": "cc5c6a83f7d42cb3b0e79eacb9798f4fc9fab513ec6db01b6dbedb498edab1b2"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/hash2.sl",
+          "role": "golden",
+          "sha256": "a9ca5f4bd012af1a12711b9fcdfcfb03178eeba8a89a3592978b80f9b59996cf"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/hash3.sl",
+          "role": "golden",
+          "sha256": "646ac1b5e5bcf5ddfe05a1becc702892b80a70279ccde955719d2837760a9c29"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/hash4.sl",
+          "role": "golden",
+          "sha256": "620bb019b64c7e77302552a0a49908529ef7b11bf5da8a55544b9da6551323e1"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/hashambig.sl",
+          "role": "golden",
+          "sha256": "2398da4215c9582fb003db3584bb616de64c83f15d60458543e9bbc0eeed17a7"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/hashself.sl",
+          "role": "golden",
+          "sha256": "2ba5f1470ab21eb8082255772a147047279310dd766a46bce72c61235f62ec99"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/hexbites.sl",
+          "role": "golden",
+          "sha256": "0864d4761f165b3b2b121ccdfb7eb45faa20fdda18a451eda8914fd80fa969e0"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/hfreeze.sl",
+          "role": "golden",
+          "sha256": "55cfe0fcefaf1382bf88662e2ce705ebb9e081e79a9ae8382566b27e864a6281"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/hoeserror.sl",
+          "role": "golden",
+          "sha256": "630baaa46f860c9c04b38bfa6507f6b1460e7d3c4e2a5d2b347d71dae7a7cba5"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/hoeswarning.sl",
+          "role": "golden",
+          "sha256": "5f018190f4751f636dbf6f01e58fbba8fc0b4d4bf38f575d85e27943a64439fb"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/identity.sl",
+          "role": "golden",
+          "sha256": "eeede8ef72a526ac2349596f390e535f22dd0b7b003089632aa1ea2789aedba9"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/identity2.sl",
+          "role": "golden",
+          "sha256": "7140808694bee238ce858fede12fed80eacd366aee9b9bdad2915c19a8cad351"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/if.sl",
+          "role": "golden",
+          "sha256": "897f6098b8f7464d9ebd84ec1b67182c92584ab52d51fa79f66c4fd3f7edd4bb"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/ifand.sl",
+          "role": "golden",
+          "sha256": "b600938cca9497f174ff8d4ae4398c1b2e05d01c56541282d97fe4a3380b9ca3"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/ifand2.sl",
+          "role": "golden",
+          "sha256": "99e5ddff1f01d7e7921e0ed638366b5dd2a0d0e3d1e7dc55938899e933df9665"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/ifarray.sl",
+          "role": "golden",
+          "sha256": "abe25f89de7ff3826cbe937e4a77b640ac453fcf7f36cabb18fe7998d97a70de"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/ifbang.sl",
+          "role": "golden",
+          "sha256": "202b39c948c8815c9c1f0d8327259fdaedfbf98450024d76cf95090c2b889c46"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/ifby4.sl",
+          "role": "golden",
+          "sha256": "c33d9c0096634780309a2ea7370294af9a101dea6c99c861338276ae55d63995"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/iff.sl",
+          "role": "golden",
+          "sha256": "cd1184fb0335d8533c08b0aaa69b5ca04b61eb54fb4ec64d7f25c00a7d4cc6ee"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/ifferr.sl",
+          "role": "golden",
+          "sha256": "ff409c36cd18aa42eee24f9c63b6ecbe5867bc61ca6e25f1681919b27ba4c517"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/ifnoparens.sl",
+          "role": "golden",
+          "sha256": "85698c6daa946dd8236af8e0388d6b8315414f7f8340148daf96248d27eb67b3"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/imperror.sl",
+          "role": "golden",
+          "sha256": "886df1683147eb83b19bad06d193106f101d4ae77622430f39a740d7d6cc7930"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/impfrom.sl",
+          "role": "golden",
+          "sha256": "cfd7d19e35a37fc2af02f09362a8ad14fca67c8a84f46d1ed50ff7f23b3e3c81"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/impfrom2.sl",
+          "role": "golden",
+          "sha256": "cfd7d19e35a37fc2af02f09362a8ad14fca67c8a84f46d1ed50ff7f23b3e3c81"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/impfrom3.sl",
+          "role": "golden",
+          "sha256": "65f45de429f460400abe2c51ab62535680a67e7bf6517375873142bfee36ab98"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/impfrom4.sl",
+          "role": "golden",
+          "sha256": "7831555daebc60200dff27b7529844af5295e307be647866cdb7d1de8ca02911"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/inchack.sl",
+          "role": "golden",
+          "sha256": "bf794518e35d7f1ce3a50b3058c4191bb9401e568fc645d77e10b0f404cf1f22"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/incit.sl",
+          "role": "golden",
+          "sha256": "50e9756d6afba32ee171b0ac9c0580bdfb59907f679edac8efa335b4ff93377b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/incit2.sl",
+          "role": "golden",
+          "sha256": "e021c627adb82f57021b59a66e86b27ba39ef53e861f5b1b1e1b5211a46178e1"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/incit3.sl",
+          "role": "golden",
+          "sha256": "4ea443257e5496f0f1c254ceb812526d1f008afd28838302ee2ba19413cdbb03"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/include.sl",
+          "role": "golden",
+          "sha256": "4c840c86c0f832a28cb12e95bf4811ac45347175b67a1e9ee7937a3976e6adef"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/include2.sl",
+          "role": "golden",
+          "sha256": "2986f2e99defae98d2c1168504ad50603c4a84681f098e883c5f050b6166fc6e"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/index.sl",
+          "role": "golden",
+          "sha256": "18cfb540ed4c9636396300d402695242cee9fbafc16ab9db86ba52fc321f57b3"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/indexand.sl",
+          "role": "golden",
+          "sha256": "bd621a0c21154de11868986bad4628d12eb7b42e567cdf3ecbb590f451693ef2"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/indexerr.sl",
+          "role": "golden",
+          "sha256": "f3f759cc61aa4ef5967b11cdb502e66874096fe84ef3ecc075f1231155bbd80a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/indexit.sl",
+          "role": "golden",
+          "sha256": "93a650ad1a655abe04d8597f0e1c0bc6e9468070c5c818398cc105527770e2bf"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/inline.sl",
+          "role": "golden",
+          "sha256": "70043ebe249d509799b3d6b86175ddcc2fc0bb2643f9407622628b22a9177f7b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/inlineb.sl",
+          "role": "golden",
+          "sha256": "f1335f4b9b5aa96b02c9571b8df84fbc02d0bf54f54020a3bf20012f33a2b115"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/inlined.sl",
+          "role": "golden",
+          "sha256": "3851b1865885abfe88207802637893de687210f10d8eb39fb3d03439b050cf97"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/inlined2.sl",
+          "role": "golden",
+          "sha256": "f24ddb445329288cdc592d955ab314235648905328dd5accc1019f254a35eab2"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/inlined3.sl",
+          "role": "golden",
+          "sha256": "b8f6220c85605cb634ff0c721ba8857d824477c9f8f6b73d25035f64431a97df"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/inlineinv.sl",
+          "role": "golden",
+          "sha256": "6939390582b77fc92feac2d4cc87c9a30023f397e5aa924a1290cf41d24bd727"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/inlinelocalcallcc.sl",
+          "role": "golden",
+          "sha256": "873c797aac2c04320665e7dace5d9d8fa11b6e61c27dcab2b17edc6d215975ed"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/innertroubles.sl",
+          "role": "golden",
+          "sha256": "a46d8056bd8d6bee704d4c84bc6d6086ecfbbe82c89b1031d990a02fa02ccf6b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/invoke.sl",
+          "role": "golden",
+          "sha256": "06436b52109097592fdc5abf92e2496eab743faf1a93144a7391c871007b9067"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/invoke2.sl",
+          "role": "golden",
+          "sha256": "1584e0c109a519a013ac635202278f1b66cb4c1e140c19dfc8c1a125c8549aaf"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/ioerr.sl",
+          "role": "golden",
+          "sha256": "4991a57e77f3c8fe76ba5d0b9ecbb914644f4e59af3008a69f6f8437d8eeef56"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/isa.sl",
+          "role": "golden",
+          "sha256": "f99a1a0a9a2bae5f156023002d1e3273792c72546393877ae07fa513a2caf534"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/iswm.sl",
+          "role": "golden",
+          "sha256": "89f74d2a0f32f5db850484e16d58e5943f6ca762b02054fb335ab9e8dadda0ff"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/iswm2.sl",
+          "role": "golden",
+          "sha256": "793303eb1074f547ef726750a22d504f6da2559926da340096580d819f777dd6"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/iswm3.sl",
+          "role": "golden",
+          "sha256": "5e1e31d475c01616e377b6c09cc44a9b5a69afe641095acb3ab19c11676da77a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/itererror.sl",
+          "role": "golden",
+          "sha256": "82a48f848bda089210d02458233e0abdd5dbacb1c4675fa6af8cc4ed5c270353"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/iternotrace.sl",
+          "role": "golden",
+          "sha256": "80483b9e292e6e7f7748a62cbf604e629dec52e6ecfeb215cd43b28f119d3cdc"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/jiter1.sl",
+          "role": "golden",
+          "sha256": "96fedad88c5bb233181f63d04b49aa484bd43aa468abc0739ee3209118914fa2"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/jiter2.sl",
+          "role": "golden",
+          "sha256": "1f666fec75a179c39d04788269c48ec50e9c3a1ec74644b92fb90348e9187c3b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/jiter3.sl",
+          "role": "golden",
+          "sha256": "2560a4b121e64e08a5940dc59259a2a258a3ca0286ff6d653f5240edf2c2a627"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/joiniter.sl",
+          "role": "golden",
+          "sha256": "df005628bad7797189608ca7b713e9d3939c4d30d7bafa2b33031cbc86e1bb6e"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/keyvalueerr.sl",
+          "role": "golden",
+          "sha256": "4d713ea7fb13767ee4912d3332757dba95102bfea6c7002518c4cff147e43f7e"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/keywrds.sl",
+          "role": "golden",
+          "sha256": "91bf44d0a10bdb192c372abd8362e5089b7da61c9dbb2dffc0d936b0f33b5caf"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/lambdacs.sl",
+          "role": "golden",
+          "sha256": "fb96a9d952af919d6185ceddf03b4d9b3359506bf1db89ba556249cfd24ba67a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/lindexOf.sl",
+          "role": "golden",
+          "sha256": "5df07c02d46b25d036ae6bc88e5aefaba42cf9f89464f5f7a4605b996d9bd3f9"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/lineno.sl",
+          "role": "golden",
+          "sha256": "3c3d037c7c7cde63e831c814cccce418652d39a6a70c2c02b9bf46a1d8d4f6bf"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/listops.sl",
+          "role": "golden",
+          "sha256": "ed299ab5ae261e7473e0d7dc82ac2357a774acaaf519993c40be4aad5fcc60c0"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/listops2.sl",
+          "role": "golden",
+          "sha256": "95ace64ce84854c2d30ad15e86121b46edc7a8d506babfa7520f8da3d4eb8fe7"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/listops_empty.sl",
+          "role": "golden",
+          "sha256": "1c323d2e1c3da129c269810edaf5c18790738e8aa846644f6f49ccc97ba783d5"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/listops_empty2.sl",
+          "role": "golden",
+          "sha256": "b54a6198cf421b10c55c096baaa17be40848a324f6fb4919599f4e31e1ac9b8b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/listops_get.sl",
+          "role": "golden",
+          "sha256": "2c246fe51dd6ee5e56cf42388b7fafec3440ca227c12414741f7dab6e9e51263"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/listops_simple.sl",
+          "role": "golden",
+          "sha256": "233289b268555b8e1cb3a070ad9e62f1ff946d6c14c76ad356aecce13aa0faad"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/localstack.sl",
+          "role": "golden",
+          "sha256": "ac789670e24f5338dd03a1678f8091153c356d0e88c4ae48ecd6fa0446e624d7"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/longip.sl",
+          "role": "golden",
+          "sha256": "a06d1f657e8e472288199c8986601f8e563dc7e7e0e597ab89d216b4e737db52"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/makebadscript.sl",
+          "role": "golden",
+          "sha256": "14ffa35b8ae6a3a63876de3bdc0910eb7dacda027dca61444910f1dd56fce51b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/mapasc.sl",
+          "role": "golden",
+          "sha256": "b5850ff57192b35383655693473bf957cb4677ca148e0ca671f2925815c5f4e4"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/matcher.sl",
+          "role": "golden",
+          "sha256": "a947eaf2320f35909aa685e1dbeef073980901988b5fa4d1f7720a81b4c349a0"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/megaio.sl",
+          "role": "golden",
+          "sha256": "764e652a9548c054edd0c9c39984d7aea8cc9fffec176dcd1e5f1aa8e9496cd0"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/memoize.sl",
+          "role": "golden",
+          "sha256": "9bbcb8be11019058dcd5eb0cbe8a9174a9c92413528e4de6b4d42b7bb2dfcead"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/mlistfun.sl",
+          "role": "golden",
+          "sha256": "39a350c249ab2e6cf2755881e22d22f9a4e4d4d08a65d4e8ea820ff75a17d9bd"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/multi.sl",
+          "role": "golden",
+          "sha256": "e51ee04424a00012293703c2de1a8a306cb9278e7b5f063c184595c3b479fe23"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/multih.sl",
+          "role": "golden",
+          "sha256": "2efc8ac6b6d2b72661296f44f458aa5ff14464540c3bf23576f1c52ca2f673cb"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/multilit.sl",
+          "role": "golden",
+          "sha256": "e51ee04424a00012293703c2de1a8a306cb9278e7b5f063c184595c3b479fe23"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/native_arrays.sl",
+          "role": "golden",
+          "sha256": "f8bf3de1699a0ea5b2a1622f7fef9bab9a58d706c2f9c80319d93e1aaadc1c55"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/newInstance.sl",
+          "role": "golden",
+          "sha256": "adcd7780f078c2a05575e58f0092ef2caa613b5d23a95328e86d6b80a3311cea"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/newforeach.sl",
+          "role": "golden",
+          "sha256": "86618d14f0c1d24dd03eac1d53f23a9a62c2347399acbbcaeea4abf7751929f5"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/newnumbers.sl",
+          "role": "golden",
+          "sha256": "f3cf2ebf233d61b6fa07f960d85335ac92d485768b71820faaf06fafd21688ba"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/nmesgs.sl",
+          "role": "golden",
+          "sha256": "b542f1025f2a4c133392160cc43b91f79a494d9a70234fadffc7502f853e787e"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/nosharel.sl",
+          "role": "golden",
+          "sha256": "7de1555df0c2700329e815b93b32c571c3ea54dc967b89e81ab73b9972b72d1d"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/noterm.sl",
+          "role": "golden",
+          "sha256": "6a3288aca4418075698442b8f27eb025c14b76dabad9ae00971941bb9a905121"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/noterm2.sl",
+          "role": "golden",
+          "sha256": "22e90728da1a0d11e3c046f1d68f466e85804a02b4f0681138a6171ea97b17c7"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/nparams.sl",
+          "role": "golden",
+          "sha256": "e9519cce49536da7590942a68b2782ed14c0799d64469e735ba876c5b6695748"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/numbers.sl",
+          "role": "golden",
+          "sha256": "76cf3126cd65b3b1bc4cadd5894335204450f0d1c0d4e2240c51866b9af11ffb"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/objects.sl",
+          "role": "golden",
+          "sha256": "f536163ca1cede8f5718b464bf7f57bec73abd2ff649c295ab6e123a3c6c607a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/odd.sl",
+          "role": "golden",
+          "sha256": "817a8026fca30d33d9934819b043a15803bf80bb0704df49fb74103a89264962"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/ohash.sl",
+          "role": "golden",
+          "sha256": "00677fcd37ae6860b18ba8f1ab6888c6e1656150e821bbdd18658fa8be227763"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/ohashsem.sl",
+          "role": "golden",
+          "sha256": "40556661a90b58a8358c41091b544d76fdf0f6a329369f6c60555a410ab4b07a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/oopack.sl",
+          "role": "golden",
+          "sha256": "c4167313c79214a72c03daa703b51a0100d31f40d75c3ae9e5de618f9a00a0c7"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/oper_space.sl",
+          "role": "golden",
+          "sha256": "be8f14a1c0f871f6cbb77ca7d17f7dc4bf45835eda681eaef738431e855eee4a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/operorder.sl",
+          "role": "golden",
+          "sha256": "06173278a15d20b7f9993632e1aeb4ca09622f7c27a73d7c81908ac190f2205e"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/or.sl",
+          "role": "golden",
+          "sha256": "ff8a814b0f3787744461c6fe0ade7c35e6428584eee9bac8bf5bfcbce312da82"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/parms.sl",
+          "role": "golden",
+          "sha256": "6422bc895832b68440d6e2334b207c56eece6b41b85fd7bd453f3f65db49baec"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/passarrays.sl",
+          "role": "golden",
+          "sha256": "0a70aaff887e67eb9bc18b504a0761e6a17b46dba16549029cdb7fae37a0390e"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/pep255.sl",
+          "role": "golden",
+          "sha256": "72f6cfdd15f8aa2869f74f6c33b795deafb7b6a77562664f5bdec721ccb08c12"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/pipeit.sl",
+          "role": "golden",
+          "sha256": "43406775807d32275cd4be33ccb34af5efe35eef55a7de2fd03471d00ef0ebec"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/pliterals.sl",
+          "role": "golden",
+          "sha256": "396aa9ee75a5ae38e99e8dfc9f73688fd42ad46fe4ed0f445458a2ae58e379b1"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/poptest.sl",
+          "role": "golden",
+          "sha256": "45d7bad9169f81fcf93b5a01fcc6799794804adb07a29d47efd7bec4a62620da"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/preced.sl",
+          "role": "golden",
+          "sha256": "d9b9b662e1e91e1c219c49ae6f23d0cd63b2e7bf82f29f848579a02d01c778ff"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/precedence.sl",
+          "role": "golden",
+          "sha256": "3c48122fc9862b97af7f4af4aca284a7e2ae462e679f98bcddbc2401a261e731"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/print.sl",
+          "role": "golden",
+          "sha256": "a948904f2f0f479b8f8197694b30184b0d2ed1c1cd2a1ec0fb85d299a192a447"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/probug.sl",
+          "role": "golden",
+          "sha256": "98fa399b10e34de8d63d5b85db994fb85a589a3191352a1998ce81d2fcd06d51"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/process.sl",
+          "role": "golden",
+          "sha256": "76a54dc2548df5b5ea30c901c7a68dbf69991348bbe44140bfa2a582d024e067"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/profiler.sl",
+          "role": "golden",
+          "sha256": "63280a3dec88e822bb91e9ea1cb3f4ee1b2ab6263504d8060adfbd54797d4057"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/proxy.sl",
+          "role": "golden",
+          "sha256": "5dfc2a8a3b817d81ccedcf38d020693512ad9d824d896b43267349b487d13c58"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/pureinterop.sl",
+          "role": "golden",
+          "sha256": "970844a39781c52b3ff84b459777ecbce0d9af87c5639e99b4d936971ffb89cc"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/push.sl",
+          "role": "golden",
+          "sha256": "49ecaa97eef3168a850387d5176fb4c429558922250e4b7775bcd2fa0766f8a5"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/pushl.sl",
+          "role": "golden",
+          "sha256": "4fee84acb8e8eb775d08e7dcd6001b233f20fbcc2e933b54355279ea62760677"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/pushl2.sl",
+          "role": "golden",
+          "sha256": "cbcf9438555b567640f8326b2eac9e9b56c99565c3c1189e1e5cfd9e4189db2f"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/pushl3.sl",
+          "role": "golden",
+          "sha256": "3adb04e56ba8e95c72f19dc5f26deb0017598fe42de2221d0e24ec6bf97df6c0"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/putAll.sl",
+          "role": "golden",
+          "sha256": "03a647ecffa9beeb54a88e7d661f1884e061848c0ef0ec6040a6f5edd9983751"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/putAll2.sl",
+          "role": "golden",
+          "sha256": "5069218a4cf47e88ab63c2d87ff0e202c751f1c27b0d7a20b8972c95ae49557e"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/putAll3.sl",
+          "role": "golden",
+          "sha256": "ecf372f9e4ec76cdd35df24d20571ad17eaff8137e47e6787a64c45ae6d7e1ff"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/readb2.sl",
+          "role": "golden",
+          "sha256": "c428231fc84263e2dfc697a41a51d50d0ab016906fa520e4ce3553873e600305"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/readb3.sl",
+          "role": "golden",
+          "sha256": "0a356a60c9e64dff7c9068dbb54e1fe6d89dd611d4e6636400b0a0c765b0507d"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/readobj.sl",
+          "role": "golden",
+          "sha256": "69bc743609aa937583c67d77539855e2f15748c947288cc24c500d7714babc8c"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/regex.sl",
+          "role": "golden",
+          "sha256": "d960e5a934f079ac27651539909de66c41690a06f42ed92c42940891d8dd6dca"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/regexc.sl",
+          "role": "golden",
+          "sha256": "cb324ee3da39f241a169f3dfa06866a09c80cf10e1480a85ea6eb2273fb66a0a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/remove.sl",
+          "role": "golden",
+          "sha256": "2add7b9799cc05d156f6501321c4a7c6ed3c73a174baf4ee0fa58df0e7e78322"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/removeerr.sl",
+          "role": "golden",
+          "sha256": "52662867e8a07c514d79d95a32c42940dcb0ecdedfc55991cb061f12b4cf054a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/removetest.sl",
+          "role": "golden",
+          "sha256": "d6cafd0fe87943ae60c9535939b418002552418792bee252c162ab44ec4396b3"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/returnloop.sl",
+          "role": "golden",
+          "sha256": "3d7fa1fecc4c5d1d3c10f6dac0c3a57d70686176215575315ee3e024a8de339e"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/returnstack.sl",
+          "role": "golden",
+          "sha256": "dc122cd797e76d1e0b07efe6262829098581816f1727d9a883bd4052a4e659ef"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/round.sl",
+          "role": "golden",
+          "sha256": "8cc7dbe16966197f4759299ce6491681b764af651a1c0e347e9fe540cb0254f0"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/scalar.sl",
+          "role": "golden",
+          "sha256": "f37b96f21b1999374c466706d28b21b74617bebe7ccd7fa4f4c4f64145777b2a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/scalref.sl",
+          "role": "golden",
+          "sha256": "9519a4909bea97c8a9894eb1fa48ca4269092afa389a9929dd28b411dc94bb0c"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/scope.sl",
+          "role": "golden",
+          "sha256": "1c6bfa3ef2b88eca92bc5eabaaddabeb68828514d5abb4aada247865683b217f"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/scope2.sl",
+          "role": "golden",
+          "sha256": "4a4f7990182192964b70df0dc393ac036fffd31cdfb97c965e36136b49093942"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/ser_closure.sl",
+          "role": "golden",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/serohash.sl",
+          "role": "golden",
+          "sha256": "a470e82e90fa4d01e80e4fb8e52e6beefb791a897cd71eb1280a3424795de26f"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/sertest.sl",
+          "role": "golden",
+          "sha256": "d6fc6598a0438b6c64eb31b953934ceccd3947f0877a86bccb7983cd28e84099"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/setField2.sl",
+          "role": "golden",
+          "sha256": "42b093da555bad319377c797694d96c1abf43c16ee1da8b0892f0bf90f9efaf6"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/setf.sl",
+          "role": "golden",
+          "sha256": "eee7488a572414d9ebd08b9837a17ef280785396dfa4ccb46c68192b657fda52"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/setfield.sl",
+          "role": "golden",
+          "sha256": "8472164b98e31def301a9119961dad3c59084f812e9983a865910f83c4a35570"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/setfield3.sl",
+          "role": "golden",
+          "sha256": "5f2c6a9b5a72a31aaa6644f979b9a9703164b3549458772d0128c8dbfd567048"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/setops.sl",
+          "role": "golden",
+          "sha256": "690887071931c681688e4a6ef29e97dfe3d3ecdc24f6cbdcba7b19b4be76c199"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/shortcircuit.sl",
+          "role": "golden",
+          "sha256": "15ae4e823b345f849ff82367aeaaaaff2f90e63e09aeee73cf5d1e33de4b1717"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/shortcircuit2.sl",
+          "role": "golden",
+          "sha256": "a9022db5a0fa3f587b62b9953f71de6344bdc4428b012625cae96dfcaecd7178"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/sillysyntax.sl",
+          "role": "golden",
+          "sha256": "a7c4b67a4ed334e93aa2dc91e6a61d336c4441508e37df11f4b80a331d80ca40"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/sizehash.sl",
+          "role": "golden",
+          "sha256": "1ec13d1d883a39583dd8d22700c9db230450bfa87d615aebe54dda823ea9125f"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/skew.sl",
+          "role": "golden",
+          "sha256": "aebbc112c238c2871dcc14fc24d6f3088d8d674c1cd759a1c37f154997151fcc"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/skew2.sl",
+          "role": "golden",
+          "sha256": "3495d47ba6e7b0d00a530d6b98c917028b9dbb94f77a851eaaad09ab247becd0"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/sleepoo.sl",
+          "role": "golden",
+          "sha256": "3ec9dcf3fe1597fee372d05d58818501a773c714ea90c4a0bcdb86464f607061"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/sleepoo2.sl",
+          "role": "golden",
+          "sha256": "c905a389ab28bdc31d73df139d408f99b3d9ed5e288ba0657c763a8d51bfde5a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/slist2.sl",
+          "role": "golden",
+          "sha256": "5736f77406cc9cd38c844a6ccd05a1c2a0fe546c4244e6a0d2f3d2393ca9ded5"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/slist3.sl",
+          "role": "golden",
+          "sha256": "582ae18a53fe1b909b6f641646e0e870fce27653b210e2f23e76eb081119addd"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/sort.sl",
+          "role": "golden",
+          "sha256": "10cde864e122dc96d33fefda8d9d26f2853ec64675c10e2a8055a39b22f157ac"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/sort2.sl",
+          "role": "golden",
+          "sha256": "0929e74136e0f1949769af0c30e805ee9639acb64d178eed99d84093b30bf083"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/splicetest.sl",
+          "role": "golden",
+          "sha256": "cf55b35a329a55735a750d7644bd741250fa157f0da737af8b25b7086f3e67c6"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/split2.sl",
+          "role": "golden",
+          "sha256": "bde5e1688f64b1a797762c173b493d87f9b3ad1f4c7ee6e963f9580e68ea1489"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/splsublist.sl",
+          "role": "golden",
+          "sha256": "09d18f1302f6a7aa5e048af48a2468e83322961769aa614b6bfb23379ea61cd0"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/squote.sl",
+          "role": "golden",
+          "sha256": "2985d20ae2578d88dfcf13005d5275ca44a445b295f10e6cf4c1ab618aaeeea1"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/srand.sl",
+          "role": "golden",
+          "sha256": "f49bfb1cc700e430f0f03e428482cdfbb6d426206b0babba6b3bcb4731e717bb"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/strfun.sl",
+          "role": "golden",
+          "sha256": "eef3c35576858aad5366faffa2162a7a069324b253506d776bfb04933e21dca3"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/stringf.sl",
+          "role": "golden",
+          "sha256": "9e7b5b6b4f7667213a0891b7c34a77f1cea06ed2c010bcbc9815e4ccee1255d2"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/strmods.sl",
+          "role": "golden",
+          "sha256": "4b2b9d925bc9730a54360182f26e75fa1ec2bcbc7caa0c73b71a568fc0c08171"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/sublist.sl",
+          "role": "golden",
+          "sha256": "a3d809442dc363b61463cd8397a80e7e321182bfde62ed3b71269831ee63b61e"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/sumtest.sl",
+          "role": "golden",
+          "sha256": "66ebf67f9ee666d6171213066d780a091edd98d968f28b1c0cd8d4c4267d28fe"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/sync.sl",
+          "role": "golden",
+          "sha256": "67126c6812f3a03c34d99e51676308dde69b899e6b8974dbb0ca4c70c8574afc"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/taint1.sl",
+          "role": "golden",
+          "sha256": "9869ca697bc0fddca2001ebee2454753d75bef60d8a97ee37edaa992ad4c1391"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/taint10.sl",
+          "role": "golden",
+          "sha256": "9dae8cb8298eb554af50aaa86789ca1e6e90328ca80d891387b6131d88448c58"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/taint11.sl",
+          "role": "golden",
+          "sha256": "de216a2137fbeff289e6fb2cbb6997a6372b99e8341d6091eadaa989dcbacbd6"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/taint2.sl",
+          "role": "golden",
+          "sha256": "fa2847a57c3fd262f1eea263e0f0a75b09144335011b17792c1b2e32a2365855"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/taint3.sl",
+          "role": "golden",
+          "sha256": "3741121c1e15e588cd2dca28e8c237b7a89bded6c983a8267571498b7bda129a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/taint4.sl",
+          "role": "golden",
+          "sha256": "b2bca19b77a64b011f90d2bc13c7fe1c46eadcdb40a16b52cf8541b81132c699"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/taint5.sl",
+          "role": "golden",
+          "sha256": "7c01c84cbd4ee6c1553fddaeeb365fe7a2951615cbb7db9d01dee679a68491ce"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/taint6.sl",
+          "role": "golden",
+          "sha256": "985f1a3b321b8a988e547fde0dda0dd60c00b40c429ac290adda36b01df8a976"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/taint7.sl",
+          "role": "golden",
+          "sha256": "d4b5596be9316f97cb66419f7f5e785a96f95e3642b61f114d39a1b4968955f7"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/taint8.sl",
+          "role": "golden",
+          "sha256": "cd7ab1a410b0e8060e295ffceabcd12a9ad88e898a4eabacc0e0445f529dc8f4"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/taint9.sl",
+          "role": "golden",
+          "sha256": "0bc7320e9f4326936b8f9a53cd3287289e91622713db64729b1af75f30248731"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/tcatch.sl",
+          "role": "golden",
+          "sha256": "a6460324b1de26cc5293218e79b3b0d3391e0fbeedaf07127546ccaa6945acb9"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/tcatch2.sl",
+          "role": "golden",
+          "sha256": "51e6fa23d0b4b5a60807e4d1257febc28a9fa655cd235d6cbb5a23c323007453"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/tcatch3.sl",
+          "role": "golden",
+          "sha256": "02fe1a49fc2333eb08559890af3d2e9f37f3f2e6c601971137a2c806d47517fd"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/tcatch4.sl",
+          "role": "golden",
+          "sha256": "f8ec2f61fff52a9d0290b9ddca816ebd72a7b2c84ed43c29b7785abcbea0a23a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/tcatch5.sl",
+          "role": "golden",
+          "sha256": "79c4bd8164a620bf3e9ac3e02490d650d20c9cf9035c7113ed0151567b0988ce"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/tcatch6.sl",
+          "role": "golden",
+          "sha256": "bf77d0c25a6a3adc831833036ea1df063f7d4d55694294cfc10bde249a0356e3"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/tcatchex.sl",
+          "role": "golden",
+          "sha256": "02e2775637fe6de7bc7031686a1e3f3c112397585b99d0a350698e5a2bacccc7"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/testfield.sl",
+          "role": "golden",
+          "sha256": "c844dbd382ea1ebb1e019073baf945ed041c88c1ce794dd1ff77962095e3fcee"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/trace.sl",
+          "role": "golden",
+          "sha256": "8fa747848689ed6e2b203a75dd986b1bafc100b91f0b4adecc64cd76faff9d29"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/tracebr.sl",
+          "role": "golden",
+          "sha256": "608fce61995a499e26ffd979dc031e66a0e7eb450a546508b05a80dc1e74e3cf"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/tracepo.sl",
+          "role": "golden",
+          "sha256": "5e89b3880362a04489e46071b27a1c528a508d15f187f3900ae5ded1ea69e168"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/trans.sl",
+          "role": "golden",
+          "sha256": "9a3385a1f25839ac5f4a3bbd1a41f63b73ac4ae7e80d2943e201b8a76b664b1a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/traverse.sl",
+          "role": "golden",
+          "sha256": "51930504c4663859d4c29f9c35d6171e24dd5d9b8214e7e2d9b29e22febe61df"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/traverse2.sl",
+          "role": "golden",
+          "sha256": "1cd864024909066c91b7784e348a52dd97a79bc361e33aeaf8de2c58821ac135"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/trybreak.sl",
+          "role": "golden",
+          "sha256": "283b8a961001e33de1a7ce82a6dd11c6a032ed27c602e5d1de975abba8a3c702"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/trybreaks.sl",
+          "role": "golden",
+          "sha256": "27adce928227d32e987bc6e8b80d17cbe0d1223c5126fb2e790ca4c94ad949a3"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/trybreaks2.sl",
+          "role": "golden",
+          "sha256": "0315f9445a93d791671589161f73fcfd2001e2050810560c0b21b3cd37ad5430"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/trylocal.sl",
+          "role": "golden",
+          "sha256": "5f87710ad6a106b7e73ad57f171ae2485d3e439b3142378a2b4d29857375be0f"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/typeof.sl",
+          "role": "golden",
+          "sha256": "0fb79300ac1a0566c191ae55ec8061f983ce27cb70766f9066f55cac26e56c17"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/types.sl",
+          "role": "golden",
+          "sha256": "1d78045299afdbbe9207a470ca00386d548aa768ffa4602191091ed513d5a2ab"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/unicodeseq.sl",
+          "role": "golden",
+          "sha256": "061f71675f528734994d6763323c4fab855693d92b434a734aaa0975493effac"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/unlambdacs.sl",
+          "role": "golden",
+          "sha256": "4b3881b9ab99aff9dcc25d0a9431b582e09e5a8686b98ea0068f06b270afa4e6"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/use.sl",
+          "role": "golden",
+          "sha256": "b2feed1fd6481987a13968cdd6800b00f6f183cefbb91d28e8a08a556a9d2409"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/use2.sl",
+          "role": "golden",
+          "sha256": "b2feed1fd6481987a13968cdd6800b00f6f183cefbb91d28e8a08a556a9d2409"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/useerr.sl",
+          "role": "golden",
+          "sha256": "8b6e2bfdfd6b4458b8b43bf2ffe229f9835e275351d714a28b5aa77334769353"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/values.sl",
+          "role": "golden",
+          "sha256": "7d07a55d42ff8d06d70b7153f1edb70065115d64d19d4ae2fb6aa2fe571bc2b9"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/values2.sl",
+          "role": "golden",
+          "sha256": "613191681e9a0429d207896829e66c53790f2e9565866271502f7bd0a83c22e4"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/warn.sl",
+          "role": "golden",
+          "sha256": "e3312858a72deff1ae7664d3a236a6ef48ad4b696c182c4680414a64edbbe96c"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/warn2.sl",
+          "role": "golden",
+          "sha256": "7a9a83804ca7ebd3e3d25961f801bd170c2355c1b84eebc2e9cca5bf39f33d03"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/watch.sl",
+          "role": "golden",
+          "sha256": "673cc360fcbcd9532480164115e279d13fac7889abebeef2de6899252fa39a71"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/while2.sl",
+          "role": "golden",
+          "sha256": "dc0919824009394247f7ab9536cff900b388825160717e5f0a0bd6465ee969c7"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/wo.sl",
+          "role": "golden",
+          "sha256": "3da0c845b3fec039eb789812e715de3291ba93ac86ce8c0e4b44b240fc70e61b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/writeobj.sl",
+          "role": "golden",
+          "sha256": "94db5ccd607153645c81d3eb2e4145614b7a2d47c5e75a46050f8855f76e1aba"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/wrong.sl",
+          "role": "golden",
+          "sha256": "727584fcdc355d48039966960bdabe97bf72a5fec82f2d41d76db2c6e69bf9d9"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/xor.sl",
+          "role": "golden",
+          "sha256": "41e4e34d15783084ce4410e4d4b728a1ea2a4df9ee7ea96d34e247866ec72da1"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/golden/yield.sl",
+          "role": "golden",
+          "sha256": "1b53a11148171f1080a79c769b1b1aa5eb65c1d3fe270618b48f86343d526a95"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/accum.sl",
+          "role": "program",
+          "sha256": "593f39936264a09414822c352d0900260a4137943dfbe483acd346aab2ad47ce"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/addattest.sl",
+          "role": "program",
+          "sha256": "28c36ab1c510c661d3b3abb670b1e8a8d7ccc3a27f08a694fd8352fb4508041b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/addhash.sl",
+          "role": "program",
+          "sha256": "a2a2c0431bbedb89a099dd65ea6f66b42830f78a8dbccc12e22f80985e56528f"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/addtest.sl",
+          "role": "program",
+          "sha256": "b1a7555f772729f5c37692d126d018bb77e3275bf15e7e89af6cd119c97a51b4"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/align.sl",
+          "role": "program",
+          "sha256": "9bc2b2c1edea71bcfc9d50aba9edbb41e1733d971d53d9f2ef54f61d9fdf2a67"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/align2.sl",
+          "role": "program",
+          "sha256": "99d5f1aeba1af7225c1e06da0c12f273f077f341891cf8577402e4eb535daa95"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/argarr.sl",
+          "role": "program",
+          "sha256": "be8c89d9fcfbc8e93f47e5286f97e6e1ed8198772133f60633829003d95faac3"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/argerr.sl",
+          "role": "program",
+          "sha256": "531b4d6ddcb2890ebe8fbc840926e5e93fae02bfceb6a5470fc0b8465e75e774"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/args.sl",
+          "role": "program",
+          "sha256": "178478901843a556ccc55711b5909f62ebd321734f983ae5ad876340655ca36e"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/arrays.sl",
+          "role": "program",
+          "sha256": "c2f05c7ec7ec254492e1dc6ebaff8e21508a3e1a3612ba0b562c01b558393910"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/arrayself.sl",
+          "role": "program",
+          "sha256": "f453ea422c52e21bc48006b59e6f8399ea5110c87fb920a8010b667a6dc7a37c"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/arraysneg.sl",
+          "role": "program",
+          "sha256": "f567ae08f0689eef78a60cd4b634e4d6ccd2363af63e2394e368a00b60ec6ba8"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/arrmods.sl",
+          "role": "program",
+          "sha256": "c8406a3d520f0ad7b97e760a8bc96b05d0278b5b75e8c37240e591661d07c3e5"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/asis.sl",
+          "role": "program",
+          "sha256": "69ce75f1c105ab5b56ea560c7d1e3693b00cf422cd626e64596fee1736a6a9c3"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/assert.sl",
+          "role": "program",
+          "sha256": "b690133b1796d2e5f4b92242ac5defd92360c7106f8b803797fa058e0f7f891f"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/assert2.sl",
+          "role": "program",
+          "sha256": "27d262e255cdd9eadb46eeeaf26ecb4dc162d5b2db83a360ffad41514197f282"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/assertcompare.sl",
+          "role": "program",
+          "sha256": "da981b2305f86936ed2565484cebdfdc89ae50a9a5b859a6255dd2dc3bdbcfac"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/assertp.sl",
+          "role": "program",
+          "sha256": "89c1188746f59ba71a2cec7b4681c84ff9068d0caa174cf1b1e4bee4f46d9ee4"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/assignt.sl",
+          "role": "program",
+          "sha256": "95d114ddbba08ed88422c7a6d0fbb3c34d9c75e3cb06ef52360f023a36ad91e8"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/backtickin.sl",
+          "role": "program",
+          "sha256": "bbe5764d465b87b61f0448abfdc2fe30342f6aef1e5666f2626195f0ccc37253"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/bareword.sl",
+          "role": "program",
+          "sha256": "1d66268870a6b54f4d87a3c963d17422b56686807037222fb511d4295e9ef4d7"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/behavior.sl",
+          "role": "program",
+          "sha256": "de3e28b641dc2c57e8889d7384f0d88ace5bc57b9dec8a0bcc3871d6b76d0546"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/binary.sl",
+          "role": "program",
+          "sha256": "a8919d3df684f283d0228eece0676ebc8632b45bf4f4a6a5f8d222bf55be84db"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/binarysz.sl",
+          "role": "program",
+          "sha256": "7613ac53afa14f7d5624ff05174193019179cb7868041a0f57e4810574573836"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/blockskew.sl",
+          "role": "program",
+          "sha256": "e787d2982e0f257aab456cc41f83a782650e013619ec781ab63aa6cfa51ff1ab"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/border.sl",
+          "role": "program",
+          "sha256": "c9c94d124840d1d6c3b1805b1dabc3e1683d6d45c3e276211a0f687925e1ce09"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/break.sl",
+          "role": "program",
+          "sha256": "5031555326dad7ac2204241111297aa81905b044b4e831389c71591fd812ac33"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/breakfirst.sl",
+          "role": "program",
+          "sha256": "6a1d415b6bc704537a140a95433c5e0059f9921935c35cfc2870ec4980cc7169"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/brokendec.sl",
+          "role": "program",
+          "sha256": "91bac3041181a4133333f09a6e7b53067254979bf5b33175a05f3c498b455c81"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/brokentuple.sl",
+          "role": "program",
+          "sha256": "20b7275cbc32a93f84509b227cae9dac281830e9d4a824c6c204cdaafbee114f"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/brokeoper.sl",
+          "role": "program",
+          "sha256": "6aa2ae1b2fedd0e4ba4ce1308b9dc1bae1783c6cefe6d9bc40cd4637350f3ae1"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/btest.sl",
+          "role": "program",
+          "sha256": "ad8b376cbe12ded0ffd1658fd5680c95e60dbd21e74436218d99763066a6d45c"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/buffer.sl",
+          "role": "program",
+          "sha256": "d99d1d0807d90bddbfc68d882c5c3a38b85c9cfbf1c7f6e96946368c4ca6ed11"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/bugfix.sl",
+          "role": "program",
+          "sha256": "768b718d1bfa13f18f9ca2632c730f5076f934ed8bf1be8954ec6593427da278"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/byteconvert.sl",
+          "role": "program",
+          "sha256": "750d9a41fd72ce699afb3a55b0d6e86c233362d2ccc6be5d60c2f936f99286ce"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/byteconvert2.sl",
+          "role": "program",
+          "sha256": "e2752a7583f2b4be25f7be8f0fc51afb704bd6bba7564ca9e1490c6232444bf4"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/cache.sl",
+          "role": "program",
+          "sha256": "ec983f70eb6896dc6b6c0d0fc2fdd03f72550c5003077d83d351287ebf5b44d9"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/callcc.sl",
+          "role": "program",
+          "sha256": "b3e05f7369422ff2d581e545883fc24043e6abfd70711ab2eff055af9bca6c2f"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/callcc_foreach.sl",
+          "role": "program",
+          "sha256": "0e85bf11ef0d1bc095d90708f452defedf6dba319d0118c4fbe1270095e333e6"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/callcc_ifonce.sl",
+          "role": "program",
+          "sha256": "ec67255af68c7910d4f164d44c674d549958d6d503c352fd5ef7bb89188812ba"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/callcc_other_callers.sl",
+          "role": "program",
+          "sha256": "5a1487ee6bcc05c933c8cdf188897649e3a2a31b23b38a9064289d56f2c16b0c"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/callcc_prodcon.sl",
+          "role": "program",
+          "sha256": "b4db651b2c5ab8ec850fb871a9d6088584784ed941d01705dad857554f7946be"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/callcc_return.sl",
+          "role": "program",
+          "sha256": "e25a9ef4ae001ec77786d57230c7dc8f072bebbcaeff10726c151b077795f811"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/callcc_tcatch.sl",
+          "role": "program",
+          "sha256": "ca67021b358f9cac58224f9ea0906ecdf129b369778410b4491e902b9670f09a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/callcc_tcatch2.sl",
+          "role": "program",
+          "sha256": "23d0b3ceb6998676fd061bb5a29a74bb69a1ed158e5370de5a613514f84f97e9"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/callcc_trycatch.sl",
+          "role": "program",
+          "sha256": "364988ef9f63a0777a248dd991bb76f825beb9afc5aecf44eabfa87210efd77e"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/callccbg.sl",
+          "role": "program",
+          "sha256": "2e3e064042d1da694ac25671c375f1428fb42099b633dc8755d1ff8ea1d8a6f2"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/callccfork.sl",
+          "role": "program",
+          "sha256": "e6234249c30beafe182a320b0226f840a4c4be7b6671693082d9e98afd2c6202"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/callccfreeze.sl",
+          "role": "program",
+          "sha256": "0c7112ffdeb15b3e1faa98e56058caea2e4f26d266d396ffe6a4cb0a2c4413e4"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/callccpcon.sl",
+          "role": "program",
+          "sha256": "92a5d3995f71fd9d733c5ac24c59ff567ee700b68ab9204161d12b31f9354e02"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/callccr.sl",
+          "role": "program",
+          "sha256": "17688172d4e8e42372b6e24db64066aca410e75d5c7df6725a685a9bc70c033d"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/cast.sl",
+          "role": "program",
+          "sha256": "dbf0630c8f6eeaf9e9ddffc2442fac645b174bce4f9ea7f38505f4f8ffd89d8a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/castbug.sl",
+          "role": "program",
+          "sha256": "13a1b8da4d6e1f2a29571dc1b75e125de86f3d5c0af11a3d819f93de0c9afb12"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/charcheck.sl",
+          "role": "program",
+          "sha256": "d04ad7455d617a53bdb3290c71ea8c8d027502cbcb4e22c056fcc65aa02187f2"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/chdir.sl",
+          "role": "program",
+          "sha256": "0739dc897fc3da3a1d0b1cf2217b1aa6089637526647e7abebe8dff6a9d4f9ab"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/checksum.sl",
+          "role": "program",
+          "sha256": "1a678db6928c6bff324b0d57dff72c36e1d76e76f2df2d69f4ca728c47baed69"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/clazz.sl",
+          "role": "program",
+          "sha256": "097d4271a43e8fdec33279c1a61e72b47d15f113708953a9f5cc7ab5f17ab38a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/clmistake.sl",
+          "role": "program",
+          "sha256": "6000277e75556efdbc235806ba8e0973cd4704dcdf3a01165a0f36ce55d2a67c"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/closure.sl",
+          "role": "program",
+          "sha256": "cb7435d8ce23e184bef5157d72e046258568e609fe77eedd471adbea6d7a585a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/closure2.sl",
+          "role": "program",
+          "sha256": "8a7aae28f089c5babe88ccf75459984c593e6be8c9995a12cb503dc36de134c2"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/closureindex.sl",
+          "role": "program",
+          "sha256": "35d4e0561b40417912d2b460d548d82bd9a9d107e9cf75b90bafaea788f6f5b9"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/closurekvp.sl",
+          "role": "program",
+          "sha256": "ef54bf11b93bac6637b60e333a6cbcf6cbe61c0997b968d3645c53b1fedcf410"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/cmdline.sl",
+          "role": "program",
+          "sha256": "dcd7a9219ec061155f8ae06ab23f995009dbc9163d1a5217be478f06b645420f"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/compile_cl.sl",
+          "role": "program",
+          "sha256": "571a19faa96044c8038416ee4f379d394cc9eccb3399b7458c144759e582316b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/concat.sl",
+          "role": "program",
+          "sha256": "240a5c81b7f494b7045652b1a58aa935b5f66b14d7a8f5892afdefbc7a360730"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/concat2.sl",
+          "role": "program",
+          "sha256": "dc4a072544612556e8be104d023d7b7ce4e73e54cb69ce4c8fa385b9c2d8c588"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/concaterrs.sl",
+          "role": "program",
+          "sha256": "77b44ee0febf76a95a46ef2ad063399cbbe33663dff1d37dad3022cd20350a90"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/confused.sl",
+          "role": "program",
+          "sha256": "3baef0f91121bac7146098ca4cf28578cbea3cdc230af68f6925a2abf75ce903"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/connpipe.sl",
+          "role": "program",
+          "sha256": "e68ee151d6b731e4592d4eb01fdd7b45f7ec0da9e670f400a12a8af2641f8cc7"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/continue.sl",
+          "role": "program",
+          "sha256": "d61569434e879abfc3b193fbe979b054c596aacb4a2bd5bfb54aecfad82be2be"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/convertds.sl",
+          "role": "program",
+          "sha256": "c8927274a7ef64e3ae9bff8933685333579c5f311b5b0938ba5807b0fefcbcf8"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/convertds2.sl",
+          "role": "program",
+          "sha256": "c12ec63d775112a2f52a49befe20f18a335f24ef4a0ae87b55d729e0b7254756"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/convertds3.sl",
+          "role": "program",
+          "sha256": "d3eeb506f6fa977423e466765054e45e5dc182fe15c857370183f75736e4d73b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/convertds4.sl",
+          "role": "program",
+          "sha256": "0d12cf3f5aad2ea92b9bce926b8ee3a816afa96d9bbeeff65fe86c622a14d474"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/copy.sl",
+          "role": "program",
+          "sha256": "c1300aa8d9c04bf66bb53472bdbc90fe8ea68f19a0911254a93df8a70569a29c"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/cor_foreach.sl",
+          "role": "program",
+          "sha256": "0dfd4b2cb8c763724de5b1fc702577eba61ab3746a716333df7a18f2bf7775a2"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/cor_ifonce.sl",
+          "role": "program",
+          "sha256": "580e67c4a444507adf4e25d10f29139de6bda0eb8700fdc7ac187d36d0d58fbd"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/cor_other_callers.sl",
+          "role": "program",
+          "sha256": "75589bdd10bd0e2c651846da9da0879984f3ec4a1476722442341d216a441cd3"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/cor_prodcon.sl",
+          "role": "program",
+          "sha256": "ab3fa48b10ce007b8c5db76c342a1ed020f43cdff936396b143e75da599e32a0"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/cor_return.sl",
+          "role": "program",
+          "sha256": "2ba256aea3b0ae4f7b7b71e2478abbb4b35ddc3512b6ff28393b95b50bce45d3"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/corrupt.sl",
+          "role": "program",
+          "sha256": "95834851fe277bd077a3340da7d168dc5720336a335c269b45f600ed127d6e45"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/corrupt1.sl",
+          "role": "program",
+          "sha256": "96cbe731738aa652c1bff09b7f693c97df400216c56a020cb8e07ebf0203c86d"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/dataio.sl",
+          "role": "program",
+          "sha256": "fa641dbfbf01a39011d3b0a37a53b4163e8cea8dca86da174e1ba18bb061bb1e"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/debug64.sl",
+          "role": "program",
+          "sha256": "862dd92755456a935f7c6e420a414640a8ded9619be08b198d9d1d2885a382c3"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/debugce.sl",
+          "role": "program",
+          "sha256": "6fad81ae074c1ec31ccb778714a3c93b1ba7866c699b4fc811706bcd5eea0d62"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/debugproxy.sl",
+          "role": "program",
+          "sha256": "cba95adb1a1a5cefeee9906840b004f5544404437117e90b9d80265ae5ea5a10"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/digest.sl",
+          "role": "program",
+          "sha256": "0b2dcdc798a7effac230e61d3bcb37903e3d96553a83bc53f645aacecce32757"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/doubleship.sl",
+          "role": "program",
+          "sha256": "dc3fd5e6919dc35a11d5f19cfce30012576885cd8909f4ebce5011b6287f2049"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/dsliteral.sl",
+          "role": "program",
+          "sha256": "259dabccc3950f7cf2023dad1ddbfeadc33c0b3db1e25ceafec39b1996471d3f"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/dtest1.sl",
+          "role": "program",
+          "sha256": "bd207bc98bcc9cbab035b9aafca655ec498d4e605126414e8b2c4dd3c34b1211"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/elfbug.sl",
+          "role": "program",
+          "sha256": "5cd96199175ec2dc3dc26b57d2863eeb255e13133aecbf8b2097f0690d5a6f33"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/errors1.sl",
+          "role": "program",
+          "sha256": "1d84b763ac455d8e3e76c64d4a44ce8708cc2935cc8f7b3543feb8d6b7ae6930"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/errors2.sl",
+          "role": "program",
+          "sha256": "37417fe8b26e5477fe4c5239c9f61642bc480cde9987275bd37a100939a42d70"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/errors3.sl",
+          "role": "program",
+          "sha256": "ddda3ecf4c1bd31d633d2ad6e89e8d725cf29e1fc90aa479efb655fd3f9d3c7b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/errors4.sl",
+          "role": "program",
+          "sha256": "ec4eb221af1500a41302816a7ea5e76bab647c860c375561f808bef85235ccc2"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/errors5.sl",
+          "role": "program",
+          "sha256": "9f5a4b23579cf02c5204a2bb69c1786b769a89cdebcf746a7f2ce3f047e9a136"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/excheck.sl",
+          "role": "program",
+          "sha256": "bc3a5928dced93aadb6b09da5cdb5919a7c98a153999dcc02ecddc1437171260"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/exotic_i.sl",
+          "role": "program",
+          "sha256": "7e8a71305665063437ccf4e05dc7629899c107a87e47b4dc3396a78f405d55c7"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/expassign.sl",
+          "role": "program",
+          "sha256": "316c3cada0a928c5b3376d68ea20441eeb651539462581bb0fa6295c17da2e80"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/fact.sl",
+          "role": "program",
+          "sha256": "54eb12fb37d9e720822248dee07f6f5ab3871abd487b46899453cdc2c2d6a36a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/fe_generator.sl",
+          "role": "program",
+          "sha256": "356d4338e4ad6e2c300c24a63019b497da0433340d6a1aabacc4406592c2b659"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/fe_generatordb.sl",
+          "role": "program",
+          "sha256": "6d14b6a565bb3258835129de24d8fc98cad402109916b433880566c58858b25a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/fe_ohash.sl",
+          "role": "program",
+          "sha256": "4fedf4c2f08fd49bfc4114489284ae7eeedcf51d8aa2931822e70dc973e1e473"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/feloc.sl",
+          "role": "program",
+          "sha256": "d5809e2bd19e3b48da1d18a592877c9cb5f342f27f89aa34eae10a2090c2ca8b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/femod.sl",
+          "role": "program",
+          "sha256": "e28e6452a288e913fc32d2758c53a1dd1aa5f91d40e1a14ebd9910fc90e67f37"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/feprob.sl",
+          "role": "program",
+          "sha256": "eff10426fe0f8eebc31728aeaaedfbfd009c8a39c7addcb30a765196f6914307"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/feremovetest.sl",
+          "role": "program",
+          "sha256": "5e9aae25b9a86477b0b9d2996296442eea565daeb6d13e9e1f9a35f0e06e2077"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/fescope.sl",
+          "role": "program",
+          "sha256": "1ca2890999282fb4dea47ba72d65b806e1cc0caed25a5bf6948214d5f0d91b6a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/fetest.sl",
+          "role": "program",
+          "sha256": "ed0c373793c746d396cceccc513cf71cd98ae2d08d9171eadbf5dd785197c177"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/find.sl",
+          "role": "program",
+          "sha256": "8ea649c53e358b49007d765c9895b669e2e60b16f58c3fd37862ba855d452588"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/fob.sl",
+          "role": "program",
+          "sha256": "5f1d3999059df473e266c8a4a21f5b6d22dcc3b451c4ee9a7cd9c41f1e7cd24b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/for.sl",
+          "role": "program",
+          "sha256": "4addb724a27ee592fb71d52afaf04642407c59f9757dc2439257da2ac66ff8ba"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/forany.sl",
+          "role": "program",
+          "sha256": "c56b2e836748262f8b06089cc7b7b66cb36ef22ba0697385256ae0c064aeb9d7"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/foreach.sl",
+          "role": "program",
+          "sha256": "28f970f61b4311699bae438c4f658d01447765a82f32e294ea58eab236ac19a1"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/foreachrecurse.sl",
+          "role": "program",
+          "sha256": "0fda6ef6aed9c9b0cd83158e2d7302aa32bcd93a9d936988b7a75e4402ed4215"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/foreachrem.sl",
+          "role": "program",
+          "sha256": "1b65b0563649711ec31f6a81d107b407f4a46e45b1b039395afa415a17f6964e"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/fork.sl",
+          "role": "program",
+          "sha256": "5f64ea03c9caa253a5f93f5566b173975fdad687de3dc1a0a8ae255d7092a0a4"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/fork2.sl",
+          "role": "program",
+          "sha256": "f66ac5812c4b8aafdd4f26acb0363b8044699a41be81d5b95474cbb3bb1b5a32"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/forkdl.sl",
+          "role": "program",
+          "sha256": "ad6644f0701313122df30d238dd23bc651e3ed39eb997e8fb78a27e36fbcb423"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/forker.sl",
+          "role": "program",
+          "sha256": "27ad13d190e78ce05f680820f8b11cb8d1339d833e27fa257741f76d0caadca3"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/forkof.sl",
+          "role": "program",
+          "sha256": "cae584b7cfddbf48ca94f2ef1846beb871ddacb6ed80f8b11c26645b919010a4"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/forkshare.sl",
+          "role": "program",
+          "sha256": "c384c59c05eae560f3f86b6a10b21b97eb5f5804b9caccaffe128aa75a6179d4"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/forksubs.sl",
+          "role": "program",
+          "sha256": "f11b19adb6eb8fdd35f16c48648ca403ed0bf9a1e850267694297abef3346875"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/forplay.sl",
+          "role": "program",
+          "sha256": "d80b7c4ed549bf32d69496514e22dea8c1285722e105fcbb095ebc760ae740f8"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/fpfuncs.sl",
+          "role": "program",
+          "sha256": "bf111a12b98908367405a24f4d1ec593e6b41f5f191f2d8e7dd824607f52b24b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/ftest.sl",
+          "role": "program",
+          "sha256": "0cd0d8863998006100df5fc49a7aec9b2902ee5e08bb8d36ae0d2d7e7b1dc0e6"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/funchandle.sl",
+          "role": "program",
+          "sha256": "af49d65665439ae8d3cf432f5d9239d2a75644754d5b63f6afa61811ae401abe"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/functiondesc.sl",
+          "role": "program",
+          "sha256": "8228db9f6930cd597d360da1ad9c3e7e8b2d39fe34fee579254b8faab10667b1"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/functionerr.sl",
+          "role": "program",
+          "sha256": "e6881dc0f6600d2bf6d669d72acc19194d684452a738d9fbb27079a7cfa8de6b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/genfun.sl",
+          "role": "program",
+          "sha256": "fae1fdcde8b1f17397d84e1438a5608b9401917c15ab6f326c978f730a737146"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/graph.sl",
+          "role": "program",
+          "sha256": "b7084b979d26cc01c8b707f2b3c561cceeda735b201aa19907c3839a30daf807"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/hash.sl",
+          "role": "program",
+          "sha256": "586b23c20079a4bf71bfe07a2c2eaffdfa1ea45f7507907ee8989a2e1b3dcbf5"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/hash2.sl",
+          "role": "program",
+          "sha256": "a08a0827d0f7c851994ff363dd473eced231b63f6e877209ecc6a899e46025d7"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/hash3.sl",
+          "role": "program",
+          "sha256": "095d6b69784d9298c09c1e200dc53989bc3ad0266b37ea6ca1ffc43d8bd68b96"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/hash4.sl",
+          "role": "program",
+          "sha256": "8da4f49189fd97047ababe7fc818598cb97c5fea093c7042c532ca7f870ebffe"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/hashambig.sl",
+          "role": "program",
+          "sha256": "177f0b5d7bc8304c804e9e0119ec12c388d87514732df5ba64765ee34b568394"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/hashself.sl",
+          "role": "program",
+          "sha256": "0f7baa732a1c467dddd6a30794b319a2c5d8aa56e75d3b51a3e61725101986b9"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/hexbites.sl",
+          "role": "program",
+          "sha256": "7704bbaa69fde979c769dcd3d84292c61c77ec8777ab7626a651c34b2ba7488b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/hfreeze.sl",
+          "role": "program",
+          "sha256": "f631efad9cbcb0ee0a803c54f8d22f5508acdf36a7a4126ef72e6c3eb21c22d9"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/hoeserror.sl",
+          "role": "program",
+          "sha256": "79cbd1fbb586528c879b7321e5d05599a5bced95032954be1eae4bd66bf42a91"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/hoeswarning.sl",
+          "role": "program",
+          "sha256": "8d101426fd97266a61d3fa61233913e5b69bbd99ea67bcc717e45150b05c246a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/identity.sl",
+          "role": "program",
+          "sha256": "575b32473db730ecb82c93879da92ab24df92979c0206dfba150c286d5bf949f"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/identity2.sl",
+          "role": "program",
+          "sha256": "a506659571afb63ceedb21d4c157986bad02b97d59ae111d419a111de98f291a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/if.sl",
+          "role": "program",
+          "sha256": "28b52508e56d6aba906178fc2143359f56ff361c268e7c836ca435c3bc0e926e"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/ifand.sl",
+          "role": "program",
+          "sha256": "73c4e6d8fbdec724ed7359405f1ac57af5260b42350c42f7f60b694ef799503a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/ifand2.sl",
+          "role": "program",
+          "sha256": "ff7385dfb3b2bc2651d5ff983e88c9bd0ea8983ea9fc328ef052c6850309f207"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/ifarray.sl",
+          "role": "program",
+          "sha256": "edd90aecb676a07020b3caa9bfcbcec07401101e134dedc8c7bae1acf3b545a5"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/ifbang.sl",
+          "role": "program",
+          "sha256": "8c8a57ebddb513b186ee2862e8b253b49808aab44cc2f88921190904ea9a698c"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/ifby4.sl",
+          "role": "program",
+          "sha256": "eba0e32f07def78655591cdbff4ff1d5a0e522dd1585a2a4b85ba5b0342846dc"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/iff.sl",
+          "role": "program",
+          "sha256": "98ba922d6caae5164e2b2d4290dfd46ecb5c996e87c57664f55e0bb1e328b923"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/ifferr.sl",
+          "role": "program",
+          "sha256": "bacebbd3aba6066cf0c513b7a92e6857e4fa3a6bc76ab3e685771d98b36807a4"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/ifnoparens.sl",
+          "role": "program",
+          "sha256": "60e2281df70d69a2df50e17811274092a1b1a75d53527cda490a3b7fb56665e4"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/imperror.sl",
+          "role": "program",
+          "sha256": "47b62a9152f71279d7de235fa29a4de24acc2fede9a02619cfe6b24089626134"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/impfrom.sl",
+          "role": "program",
+          "sha256": "68bc5cbfeaa3e6949a72b7c92bc8c3411190a1cc9e93f6b995bc26bb6eaf9c05"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/impfrom2.sl",
+          "role": "program",
+          "sha256": "1659f28c4e2de60f651fbe7a979162fbe482f0ba32829fe66a5204262234cde3"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/impfrom3.sl",
+          "role": "program",
+          "sha256": "b9ca1dd8b2b95a5f37187ed9721884fb9430404eff660a44a76b8fd1088cf704"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/impfrom4.sl",
+          "role": "program",
+          "sha256": "99d103d894d3bfb0764d9099a8eeb8b6a88916acd2480db5a9c712c464b0431e"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/inchack.sl",
+          "role": "program",
+          "sha256": "08aceb03613a3c3b52da8623980784e1d4f284279b24c08f34bafdb32c1246ed"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/incit.sl",
+          "role": "program",
+          "sha256": "b5977a705c3dfa6689d23ff580540eb02ac57545790d48bcdafdce46e2a4ae93"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/incit2.sl",
+          "role": "program",
+          "sha256": "29aeab5b0e4050e01f56c0e465c958a4ed53d448a5bcb68ff0703d9af1e7df50"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/incit3.sl",
+          "role": "program",
+          "sha256": "a6e567bd052c6d5ff1a06baad7351ecde31807435f4a61dad7a7920fdca766e5"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/include.sl",
+          "role": "program",
+          "sha256": "302723ec3c7293fb59e00184d6933d1f1abe0d11f4e3ab479546ad03bc476abc"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/include2.sl",
+          "role": "program",
+          "sha256": "3376141b54505fa757156944b29b412292e7499bf61702528783c2d365208774"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/index.sl",
+          "role": "program",
+          "sha256": "463e04dfee175170e7eb1f65133563cc5c0c8070666fcca0e3c23f182f7d2c25"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/indexand.sl",
+          "role": "program",
+          "sha256": "579bb7da632b0bb15ae69644c72dabc42db0e2b73a569b5a562f252e9e1612f8"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/indexerr.sl",
+          "role": "program",
+          "sha256": "3981d4e7c330bc11dbfbd41e688c01b9d49ca25b7e912088c8a9746dccca38ca"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/indexit.sl",
+          "role": "program",
+          "sha256": "decd3c53adf8302d61a30fa9ad48abd3db9bb221b8a2d8957a7cbfe8eadc7c4b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/inline.sl",
+          "role": "program",
+          "sha256": "ef2310aeba30c0005bb47632acaf28a957f3672c4b059857b61b0f6e93479156"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/inlineb.sl",
+          "role": "program",
+          "sha256": "a5c1d54d5fdf2c891b5db8d79f8cf412d1de6b44cc0b227a28240be085c65e03"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/inlined.sl",
+          "role": "program",
+          "sha256": "d1331dbbc304d808a44b8ca10d280208bb80558eaabcda347adcdee3a9327b2b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/inlined2.sl",
+          "role": "program",
+          "sha256": "178cae51a4d3e898c143107fef7a9aa550579bc7f113d6594bd370f931a1d27f"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/inlined3.sl",
+          "role": "program",
+          "sha256": "13bbc4a07a2098e9b0f4257373e03d4d95e3a5d3f355fccb99774fca4e1bed1e"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/inlineinv.sl",
+          "role": "program",
+          "sha256": "86c6315d9ed68721675424bffac8847213d32588c49cf66eefbe88f45f9f91d3"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/inlinelocalcallcc.sl",
+          "role": "program",
+          "sha256": "dd2ee845b699e2b6e5930b08c1142f024afe5ee8f30a2424be3197773ed0a161"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/innertroubles.sl",
+          "role": "program",
+          "sha256": "58cdca9b60b2b322ac8d3ba1be3fe889c07a6d655cbe8111a3633b9876aef614"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/invoke.sl",
+          "role": "program",
+          "sha256": "58dfb905579efb1135f2fb96408b01ecf7c240184e0b75afae02e2ce9f558e7b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/invoke2.sl",
+          "role": "program",
+          "sha256": "36f10cce57fd9629aa11613f55a85862691790a6126aa57ee7d38952c330f977"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/ioerr.sl",
+          "role": "program",
+          "sha256": "536937d374c558a777e2370af8d9c3db178f2ea53695acf08bee868835b74dc5"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/isa.sl",
+          "role": "program",
+          "sha256": "30e16b120ac1a3041a9672fb457d872f50b022f42e2199817abf13a4102cb610"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/iswm.sl",
+          "role": "program",
+          "sha256": "2723abf57b31c0bbfc3c35b076ab8c03a6c19cdbfbaa146c9f091bf7ecbe0434"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/iswm2.sl",
+          "role": "program",
+          "sha256": "33a9a54c970327bc736512423540800ccbc9488b5a7e6aaefa6bd7393ef32e4d"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/iswm3.sl",
+          "role": "program",
+          "sha256": "c2e2af13dcfa0a941dee84323079a3231223c8c663abae3ae2cd06c4e6f5cea1"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/itererror.sl",
+          "role": "program",
+          "sha256": "09ed242e6d3f002baf463316cc7dc727de82eb2165896c8d385bcfb8bdcfeb4a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/iternotrace.sl",
+          "role": "program",
+          "sha256": "6cdcffc5bb0de6fa88bf7c14b5dcbf8941c52a6bbaffb124e2dfd694d853da69"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/jiter1.sl",
+          "role": "program",
+          "sha256": "f950a155de2d43c65e1b0c9cb155e4f3a9f7e7b9a2c28a0a70dbcb97041fc401"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/jiter2.sl",
+          "role": "program",
+          "sha256": "d81e1567ee32b491594dfda05edd27f0a01163845fabada3e95c344442a9a73d"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/jiter3.sl",
+          "role": "program",
+          "sha256": "d35d73b6f64aabbc3390a8951534761a1144c5dda30571ccc5f31f2fae746b52"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/joiniter.sl",
+          "role": "program",
+          "sha256": "9e747c821e44bc0f8a3c0150afe02af54730f195cbea066f0631a4cddb4b6191"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/keyvalueerr.sl",
+          "role": "program",
+          "sha256": "3c3f3f980a02152e989de4e836a67a5f02f2f7ac57f09bd1a241718b585eebdb"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/keywrds.sl",
+          "role": "program",
+          "sha256": "33794dd4841c2b14b3942ed19429d01dc46d26156e59b416296699b69171b712"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/lambdacs.sl",
+          "role": "program",
+          "sha256": "8d1fe6064e64b28f8a1a427d63b3b4fb17b74795b2bbe8827fdd83ddd936d425"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/lindexOf.sl",
+          "role": "program",
+          "sha256": "6e4c9eee555cbac29f0d0fc90c7a826700dfa34e6ffe04429c00f4c12b378ff1"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/lineno.sl",
+          "role": "program",
+          "sha256": "33e410223720a85c94cc240991d85f5a8533ab98fb2a9c29c27c698eb34f3762"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/listops.sl",
+          "role": "program",
+          "sha256": "fedc3b71647cb94da3436577cb34e60c7bd6b1f63bee4afd5fcde4c790f0c428"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/listops2.sl",
+          "role": "program",
+          "sha256": "086f3ba951e9700bf0d940b9f85596c90bb0e290f8c0bd3d3ed5a8662c64c3fa"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/listops_empty.sl",
+          "role": "program",
+          "sha256": "5476d9d94451bc3d64b22fbec21c3a572872bbebf32359eeb03f9e91257bf78c"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/listops_empty2.sl",
+          "role": "program",
+          "sha256": "a91c2dc142be3309ac3cf60510ac94d994359eee7ea98dfbb37a197b352151bb"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/listops_get.sl",
+          "role": "program",
+          "sha256": "eff80191bf933cc105fc2a2ee9814bedc1684305b7ab442def646d691bf7615a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/listops_simple.sl",
+          "role": "program",
+          "sha256": "f01966d80e2702c43f33ab5cb1bd1feda1885ddd7693634319285b6f069d3a88"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/localstack.sl",
+          "role": "program",
+          "sha256": "eee1e73ee5e42add3f3b7990bf8bda28ce2227c409bacb1513f9a2b74d09cb4d"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/longip.sl",
+          "role": "program",
+          "sha256": "a1483836ad5fad3a88fb947fb4a28cb1264dee656742252a8865046bec46285b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/makebadscript.sl",
+          "role": "program",
+          "sha256": "0f3a6e18e8f2d08b3ccda1f04739bfc5b66f29f13f66704e403d2c1d954d2172"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/mapasc.sl",
+          "role": "program",
+          "sha256": "a7a165eac44308d847aea3736a079c29b8adf1b63027f1969b6ebcfbe8bb3261"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/matcher.sl",
+          "role": "program",
+          "sha256": "2e32b6919b43acbf2c19ea702eb72976d77acb16f29d78fe9c31d0b7934eb61a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/megaio.sl",
+          "role": "program",
+          "sha256": "aee6fae672bfe9bf13e7dc080d50cea42124e92c127e2cdcbc9cda6b05786ea0"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/memoize.sl",
+          "role": "program",
+          "sha256": "4de0ab1352128f4b1c9fc5c30032b02588fdcf7c33b76e3bacb6576b89ee7a63"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/mlistfun.sl",
+          "role": "program",
+          "sha256": "0042b563950f3532d8969b76ec6769cf74594cafa2122908551bc600ab64f97e"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/multi.sl",
+          "role": "program",
+          "sha256": "a48bb940915336d42aa04373a0fa8f30f5a9bf27c765e1706d06f52b73b195b8"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/multih.sl",
+          "role": "program",
+          "sha256": "901df0e1df34067548a6d11811d8537e371d10374dcee2dc329712b74b649098"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/multilit.sl",
+          "role": "program",
+          "sha256": "1453ed579b49d1416e0d26988c1616f1f4eb9e8e826092558210a1dd8f73d1f5"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/native_arrays.sl",
+          "role": "program",
+          "sha256": "5f0a914d31d24827ba202f483d275c80a7a0f93d1228074105f8706bb84798b0"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/newInstance.sl",
+          "role": "program",
+          "sha256": "08bdf9853749a4c299005ade777cbed3406ce36e2026cdeb83c5cfb5a4be9917"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/newforeach.sl",
+          "role": "program",
+          "sha256": "25f8b1a30aba0c3242e976527b049f0e25d9a69fb343512ed58f042760f78da9"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/newnumbers.sl",
+          "role": "program",
+          "sha256": "eebcbc3ff80a6628912e15608e388dc1e34d3d687afb5f2c57f1148c57890039"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/nmesgs.sl",
+          "role": "program",
+          "sha256": "97796efadfeae1addc36b4a91a5e6d9954747413e6d94c93113989f562dbe0b6"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/nosharel.sl",
+          "role": "program",
+          "sha256": "c5be26df27bf80dbc4174d0252259705b4c355e1191da2e8d8898a0d74a9dcc9"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/noterm.sl",
+          "role": "program",
+          "sha256": "fdf32fbbb5996ffb47dce6d5e846ce338a479a95a4e978b1ed45a80fe35cccd2"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/noterm2.sl",
+          "role": "program",
+          "sha256": "82c6ea90d5f5775746f2f86c0473b8033447b67f5b0a847121277a927a27466a"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/nparams.sl",
+          "role": "program",
+          "sha256": "0deaecc520536246aec94f5a3f7e23c31aa4a7071489db0c355ca903988f7f80"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/numbers.sl",
+          "role": "program",
+          "sha256": "7c0cbf8e86be386d11893886805ea62e8910516c20472112739c1e585107f1a3"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/objects.sl",
+          "role": "program",
+          "sha256": "c11012c26c46efc6e6c7fa4f60430f37fce69184e922613aae27b7823ad63811"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/odd.sl",
+          "role": "program",
+          "sha256": "7de24a63223e7bef80b8013a7b658a0bd321c7377eaae8b6fc88db589d6d9222"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/ohash.sl",
+          "role": "program",
+          "sha256": "791e63b26393ee24dcbae8788db7ac9915d87a0b07ce74b36235346ce77ff322"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/ohashsem.sl",
+          "role": "program",
+          "sha256": "fca2fc103557ab66935c0ba5629b4d870cd0ef8912aa64d2db88850cd5097241"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/oopack.sl",
+          "role": "program",
+          "sha256": "a5bab15ffed9e4004b72ed40c423ecf4dc76de6c92caa0b4e169e3d33bd76e06"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/oper_space.sl",
+          "role": "program",
+          "sha256": "20f36ff4a5c205d4565491d5d56f94f9ee2fc11bdc367358ace65c38b9ba9195"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/operorder.sl",
+          "role": "program",
+          "sha256": "671e6491a4328b630672a865afe0989bc9d22aa42a146c2b4088a0033d64e038"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/or.sl",
+          "role": "program",
+          "sha256": "9d1d656aa4f09e2d7926b37abce52a3cf8d9fc7babe886e86439b954ca7ddf4c"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/parms.sl",
+          "role": "program",
+          "sha256": "dd482675247db9153b6da729c6003e92480fb175add5c50f89bf4c6a49469539"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/passarrays.sl",
+          "role": "program",
+          "sha256": "6bc35f81b3f2726a1e44b39586222d6c6646e804dfc79b74a5a1ca5d250c4c0d"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/pep255.sl",
+          "role": "program",
+          "sha256": "bb626dcffb602853ec53d9a7217d19deb47d9445918ffe905da965bfe164bd20"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/pipeit.sl",
+          "role": "program",
+          "sha256": "bb4b04c6a7be7b4c16cc1cf130e7f48250ec792897775147a96341bf1c24f51b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/pliterals.sl",
+          "role": "program",
+          "sha256": "aaf177f1ccf911885fac71002833bee4599dfdee6064873d22174fb896116949"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/poptest.sl",
+          "role": "program",
+          "sha256": "0c5e22128d930225b788892bac384d74df6ba22fcb10074a6a960808465526cf"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/preced.sl",
+          "role": "program",
+          "sha256": "ac13425bb9c5ccf00357f4eece14a6bbb9a443a4dd57244ff0696efd0f261375"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/precedence.sl",
+          "role": "program",
+          "sha256": "551f9cebea13a0440b0fc674428f761e8b1bc15ff9d8c27db099cb6a3cf41ab7"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/print.sl",
+          "role": "program",
+          "sha256": "a23b8c1bceecf92787ae4be0c12295396676e849973f2b2349aa04adf7ad95de"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/probug.sl",
+          "role": "program",
+          "sha256": "92869bfc94c1b0e6e051cffea824343d6d9a724b9f79306657d05bc06aa8d144"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/process.sl",
+          "role": "program",
+          "sha256": "1f8be7c1eefa460df5b7a25fc1940ee83429decc493871a3425be775d79b21c3"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/profiler.sl",
+          "role": "program",
+          "sha256": "fa1a76d6f162d06849bc4254e33bc284aa58ae1b59443719a38c9cc003732279"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/proxy.sl",
+          "role": "program",
+          "sha256": "97abcd9af372439e7e21d97e5757ad8776436ce1b3d841425a8cb850d7697637"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/pureinterop.sl",
+          "role": "program",
+          "sha256": "e3fcd66c705209c4ef44c3b3b5eb7542afb49a61f4d03a4b97fa1fe6aea173ab"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/push.sl",
+          "role": "program",
+          "sha256": "2f751408a2bd2e3c82d1ffc6348496f7d9e8aa87799041622bedddf43b138e30"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/pushl.sl",
+          "role": "program",
+          "sha256": "351a054840517dfe953211cf84fd9789e5452720a09a2c123c0bb6046f3969d0"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/pushl2.sl",
+          "role": "program",
+          "sha256": "5286fde6c26836d721b90db0c7c83b4a9c4a128619c87bb043bd4cfdcfae1057"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/pushl3.sl",
+          "role": "program",
+          "sha256": "de687b5576e2489e71cfb5c52b66c188c87ebf9e37144c399842cfca05a3a734"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/putAll.sl",
+          "role": "program",
+          "sha256": "f8d1a5bb6fe4ef28020abe00efdf15d062cfb979631f640a52dd1a1c28fffb5e"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/putAll2.sl",
+          "role": "program",
+          "sha256": "60136ace9e6def1eb6ba2b7d1f0d4d2da1cac7be0e0f829916c6ed8bbe91a5aa"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/putAll3.sl",
+          "role": "program",
+          "sha256": "8f01229422255bc340292a3a09f77ded2b0fcd5d97e7679ad507c78e9407ec37"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/readb2.sl",
+          "role": "program",
+          "sha256": "1e8d9149411b0b89bbb77bdc4543b132411391c1aeaf2591cd178763a5af46da"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/readb3.sl",
+          "role": "program",
+          "sha256": "ff96044b4fdcd5c6b1d09c7f7d6f7cb86d015ebca96dc0321334bad1b5bb9d6b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/readobj.sl",
+          "role": "program",
+          "sha256": "214498afe5c8e3cd6157c9f19952c98698f8976c392ae18da1d3a2e1ee8b10cf"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/regex.sl",
+          "role": "program",
+          "sha256": "63f6f8aa5d36008aac2dd9b4d2b11a4df660bb2fcc07bc7630c1e6fcbef9a4e8"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/regexc.sl",
+          "role": "program",
+          "sha256": "3ef10a34372568f95f6ecc431015638dc080539340c940065f91c8b65863168e"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/remove.sl",
+          "role": "program",
+          "sha256": "eae21e2827777a9cfec66fd5c5fa0299920fdad73dc91942b1367fb42e5f030f"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/removeerr.sl",
+          "role": "program",
+          "sha256": "70508fdf3a2d4ff4bfcef345c9ce36893ab71fbddc20343ef0af6e76ae11694f"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/removetest.sl",
+          "role": "program",
+          "sha256": "0c655fa42753f312689b0f03ee1e969be00e5fa7afe679bf7434f6be9056086b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/returnloop.sl",
+          "role": "program",
+          "sha256": "e9061a85d30f3caee13f1c96dbc6e0c60fc79721c55fc2de567c2f9b4f830482"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/returnstack.sl",
+          "role": "program",
+          "sha256": "fcbd1c9a56b20a2a4efeb34fec2d1476147ea9b9a654c2d471e97f9c2cfe125b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/round.sl",
+          "role": "program",
+          "sha256": "4012774afcd72121caddad474e3333cb0ce2523feb06d94cb3633e9640ebbdd7"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/scalar.sl",
+          "role": "program",
+          "sha256": "37d8e94ec1960e102b78dfb49d5a9430d2c75aeffc80edb603033b8ebbec1f5f"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/scalref.sl",
+          "role": "program",
+          "sha256": "baf1b418098a94ee148696f2671e97a67ec2289d428e1d1160044b05aa354106"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/scope.sl",
+          "role": "program",
+          "sha256": "1afbbfb3f51388e450ee7d16a9ad7b22c3ab07f28086fefd6b929b441715543b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/scope2.sl",
+          "role": "program",
+          "sha256": "0de6f006651d8bd827f4b785475c5000d92ff52d3752dd5462924011e6607773"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/ser_closure.sl",
+          "role": "program",
+          "sha256": "fa084144284a95bb58148a6a8b62d8e27cc265da40addba9d1e2f3bbc4efc28e"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/serohash.sl",
+          "role": "program",
+          "sha256": "b56ba0ad5a1474a25bf21b919887e608959060459063b6deaaa932f8d339d4a7"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/sertest.sl",
+          "role": "program",
+          "sha256": "5b00bb8f3b2a0308cf6fafad7eea4456fa5771c47e9766e8a7ee81ee7c00b771"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/setField2.sl",
+          "role": "program",
+          "sha256": "9e65633f24c3df3d89e885bd1a14d0f6316cbb72dbdd4adca60f60d26242caed"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/setf.sl",
+          "role": "program",
+          "sha256": "4202e168843b0069d60bafed3d2e56051da32277b59d075ce4aa39402b62e350"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/setfield.sl",
+          "role": "program",
+          "sha256": "920379f720c334f1b0859cb736e46b39d80fd7de02f3b4dc5af42808b7bbe1f4"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/setfield3.sl",
+          "role": "program",
+          "sha256": "c7821fbbc4b4d5e7e6c3f46f56025d294aeadb04d5fd5f48f725b978a07a4bde"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/setops.sl",
+          "role": "program",
+          "sha256": "55566d84466448e9e8347b8e86356b821adf5dd9979edcc78fa703af195da271"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/shortcircuit.sl",
+          "role": "program",
+          "sha256": "e76327a53f96c246a30417a709171acbd00c1e7e5a6687dfd9959b682ee2cd77"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/shortcircuit2.sl",
+          "role": "program",
+          "sha256": "ca1e5cc232d9ad2b752485b8548a41527091e2c4fc01b4e6d2aa03b1cc42db77"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/sillysyntax.sl",
+          "role": "program",
+          "sha256": "eabfc4083a636cc8eb5b2d8cd49339f4ab481b13927f1f211f6ae0c9f971deff"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/sizehash.sl",
+          "role": "program",
+          "sha256": "b8cebfa6f30a060490507c643e901dfd7020624edf374f00a968f42989941f71"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/skew.sl",
+          "role": "program",
+          "sha256": "0a92844393467107e5149f2299f8a9cabb4af5d7d0b3bd05a2b51c1a0598a463"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/skew2.sl",
+          "role": "program",
+          "sha256": "cc12a814ecc3c0fca486af37ffc6118de825935301c6c60c37505a593ad080b2"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/sleepoo.sl",
+          "role": "program",
+          "sha256": "3d65ec7f3abeb4d743fd16089d72052217557a5ad4f74967d92a87850d639acd"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/sleepoo2.sl",
+          "role": "program",
+          "sha256": "07cae212ed73381c958c8a90b90dbade16d12d098e8e1a1e1e11c5905867676b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/slist2.sl",
+          "role": "program",
+          "sha256": "b7ee897be4047a1a45bbfac85e8d84498788e8aef0f922f8079fcd8127ad66be"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/slist3.sl",
+          "role": "program",
+          "sha256": "2dd2ac57370c68fe9de0d708407a2cbb58cad167a1b9f8252f32736f910dfd73"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/sort.sl",
+          "role": "program",
+          "sha256": "7c74fdbb5c7385db05c4b393566707fbb9ac84ad537daabbfb003cd42e4dd992"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/sort2.sl",
+          "role": "program",
+          "sha256": "49465aefd99740c31e50fb0015bdff1b55cf7e1eed4b9b15584a91846842f3e4"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/splicetest.sl",
+          "role": "program",
+          "sha256": "90022e9b2013032dcbb818f5a6b9725d807646cee5cef13021e45dd1f15c3c69"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/split2.sl",
+          "role": "program",
+          "sha256": "376ec36ce901cfd82c3bb1e4e91ca0f46f12826d4b61d12fcc9e19c8cae96c9c"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/splsublist.sl",
+          "role": "program",
+          "sha256": "208e12e43ea0a86f105da5cbf0461cb5b19b6a583113c53011f00c92cb3e7a67"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/squote.sl",
+          "role": "program",
+          "sha256": "51132f610813e4c11b91c9d180319aa758ee0cafd966cfd418eb11a5cb183819"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/srand.sl",
+          "role": "program",
+          "sha256": "7dc954d6847b08e23a57b78a57e73d0a95766215ac93659ca9f4472c39fc1d58"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/strfun.sl",
+          "role": "program",
+          "sha256": "b094733a587647fffbb1ff24c0f5f688d67b12849ba97af310eaec11da52c6e7"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/stringf.sl",
+          "role": "program",
+          "sha256": "2ab0c95838d2b46f906c1f642e5c1b3f2f1aecfe92762cc47253d34a1fb54552"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/strmods.sl",
+          "role": "program",
+          "sha256": "3c9552aff3103ac683c685798e1caf1ed536ee62c0db7b059b7c219b39e26302"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/sublist.sl",
+          "role": "program",
+          "sha256": "62829d9603a2520eadf0883288f27bd791b0ad53c7e20f2f82f5465f27e1c8e8"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/sumtest.sl",
+          "role": "program",
+          "sha256": "6637c44931551b1784328bee28f82d675e0f4e92fd6a6d955f8a73feb87e0284"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/sync.sl",
+          "role": "program",
+          "sha256": "bc5de89193e2c326f9a2dbb638e931eff112cc8e47babe7e1b18c7599601e1a9"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/taint1.sl",
+          "role": "program",
+          "sha256": "4b863856b13176b294e834a8ecad4d3ec159b26a598301937d6d53f58f869fdf"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/taint10.sl",
+          "role": "program",
+          "sha256": "a2b8a542c1e5b09d11e772c05d3d761133f8bca6249ab094cf1d76f583bfb19e"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/taint11.sl",
+          "role": "program",
+          "sha256": "6b7e4383f75c92197b86f06b6f3f03cae72abf62d0bf6853ab0c84f12101da87"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/taint2.sl",
+          "role": "program",
+          "sha256": "2d7780d9521c8064801de9c4de59606deb92f2ddf2db6ee725bfede8c2348a8d"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/taint3.sl",
+          "role": "program",
+          "sha256": "1aec3042a18e87614bb52c79df8199685c2878f05d3b2714576861c6bba2640d"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/taint4.sl",
+          "role": "program",
+          "sha256": "3531e849aa2d668fe52164fb2c58696470c0efeb98aa3bbde7c3f7f35ff049d2"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/taint5.sl",
+          "role": "program",
+          "sha256": "09ee4c7f9b2e79c286822c63c848b3cf0b60f238dd0402a97f94d2c6174693f5"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/taint6.sl",
+          "role": "program",
+          "sha256": "67a00e175460c36a5aad502dc498b7bb95517899d25355e166f440c723ddbe44"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/taint7.sl",
+          "role": "program",
+          "sha256": "b5c796334f5f8665bbefc803003bab71f4cc587c9a5a4c738424edc7a18f28aa"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/taint8.sl",
+          "role": "program",
+          "sha256": "e255d297d6cbb840896b72a54918ab840f75d8c023cbe690b5b6b30ee7a9a5a7"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/taint9.sl",
+          "role": "program",
+          "sha256": "cf1726898d1a62a55f3b10705a800a704d473c4bc7283b8038bc895d92f522fa"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/tcatch.sl",
+          "role": "program",
+          "sha256": "9fe629d5d4d8dd83452f8c54ad4672b58d33b0380762c1848db36e08d2370890"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/tcatch2.sl",
+          "role": "program",
+          "sha256": "59a2452773cd3deb0bf9cc02666246b4afe432bffd2fe474ef88123d8a9384c8"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/tcatch3.sl",
+          "role": "program",
+          "sha256": "f4b1a6c3da588e327257892ff7781163decd4b6c96b688cc8b96d2567a04e760"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/tcatch4.sl",
+          "role": "program",
+          "sha256": "79f20c34f157a5beefc2b3c35f52e23723c10e8288a4bf7120edd383a13a014e"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/tcatch5.sl",
+          "role": "program",
+          "sha256": "5f1455318cc2e1524efb6b7a43392b8e6317b7df8d5a4e9e243b69f5e0ae65d6"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/tcatch6.sl",
+          "role": "program",
+          "sha256": "17f535cc20f7b0eae95ef826aa459a849d00d80e45513934b3ebb841e79d833d"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/tcatchex.sl",
+          "role": "program",
+          "sha256": "6cf33af2a595de6da6b5b75922d9ae315fc500a7b1375e38c72e5d01a495da39"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/testfield.sl",
+          "role": "program",
+          "sha256": "cd49d27632393cc7d0a19282909814e9ebc9af9a8a2f511f21433e7d1a79f7d1"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/trace.sl",
+          "role": "program",
+          "sha256": "272007e938f0a6ae7910ac55daad00ce57b240bd15e6459925e1dede31281632"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/tracebr.sl",
+          "role": "program",
+          "sha256": "0208b35139937d09aca45ecb103bbe2d3098a53682f557b76581f3aff6c0d9cc"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/tracepo.sl",
+          "role": "program",
+          "sha256": "604fce310c2a17065fb52590fe55d686fa291af5f43be6400ab7c7454b5e4016"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/trans.sl",
+          "role": "program",
+          "sha256": "c42cff8186cbf24b55daed37ddc59e655d933d725d1cf3f38661527d20635744"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/traverse.sl",
+          "role": "program",
+          "sha256": "a94c6779d122e2556613ccbdeb8cd4504a7e38e41f23ead500f5853da6847982"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/traverse2.sl",
+          "role": "program",
+          "sha256": "1a360e53da36ac8c884a029b7cf09494844492b13bfd056b61fc896ef86dad26"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/trybreak.sl",
+          "role": "program",
+          "sha256": "a0726f1b9a4bb696ca2d427baf77b763207eff20e8023320c88c4de161b5246b"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/trybreaks.sl",
+          "role": "program",
+          "sha256": "948f9b93d8fcf3d27e5802ae314d952057acb1e998cdff490ee54b1343ac6f32"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/trybreaks2.sl",
+          "role": "program",
+          "sha256": "03ea1d67709b0900aa0f4cbffcc924ee63dab70c89d3657902f856f7a4af7a49"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/trylocal.sl",
+          "role": "program",
+          "sha256": "5a0be2f6c9ccd1a0f40992bc1775847ca3bcd56e3ed3260e376d0aa50d516d78"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/typeof.sl",
+          "role": "program",
+          "sha256": "767cd2b78ff281e416d45336f739cf011df15c8a3203dc4797bce4550bebb555"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/types.sl",
+          "role": "program",
+          "sha256": "08ee77c4489f891805729f0cc1de1fd321999df2142a8da0118ff40c8f7e3bbe"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/unicodeseq.sl",
+          "role": "program",
+          "sha256": "3c14f7762fd82bf7fe1bf1512698846ca23b28d71ff92f9171e6741521a150e9"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/unlambdacs.sl",
+          "role": "program",
+          "sha256": "10a5909d3855b8cc6b8d3a2d7716c6f4ee8ef08981e481e62c6b881cf0a80a01"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/use.sl",
+          "role": "program",
+          "sha256": "dc4bf54b3e8693f7f3fee4822986f4048b28cd7090cc9e15232d5d11f2b38f33"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/use2.sl",
+          "role": "program",
+          "sha256": "25c89bb4b652a8ad72caeca670de98ef2cdff5fa8c382e5c722b7bae7447d8c3"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/useerr.sl",
+          "role": "program",
+          "sha256": "2d944ff23ef5b4e9d8e176bd024993bd5cccb2d0bd9db956f2e46db4eeeca234"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/values.sl",
+          "role": "program",
+          "sha256": "31a1c0e660ff7c91bf7663b767375c120ff4a7a450fc1fcf923886d6a082629d"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/values2.sl",
+          "role": "program",
+          "sha256": "f80f2bdd2347bc1a7eb7a9d285e8bc4ac61fc569c2e0b62e26d8e8bf3cafb4e9"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/warn.sl",
+          "role": "program",
+          "sha256": "386d8db372862071a2b7c337a65cbed0842d919f6650bfeb8c318360b682c06c"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/warn2.sl",
+          "role": "program",
+          "sha256": "b44366e6691ae94543574cb60ef09e6c017290b4ec9d92a411795f6780a75494"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/watch.sl",
+          "role": "program",
+          "sha256": "46e6cbeca995ae1e2f671607b15a3940837a01b3b3140ba362cc3241c0483645"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/while2.sl",
+          "role": "program",
+          "sha256": "3f683be10f8d57bb26c023d330792e239257208f66663dc1abf9c16225aa6499"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/wo.sl",
+          "role": "program",
+          "sha256": "0567da5dcee8281a64b4adffc3ba6d0c002188773ae67af4746efb9d3f24edf3"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/writeobj.sl",
+          "role": "program",
+          "sha256": "059fa735749ace2919b0d2c688af259445c9c2654a6cb70fbebe47aa445d689f"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/wrong.sl",
+          "role": "program",
+          "sha256": "8eca0cd47643bb4aa3694393bde4375932e3c1aa3009bdc85a2cb424b80c8c6d"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/xor.sl",
+          "role": "program",
+          "sha256": "598c720da71bf7dbcb487f2ce8a584ade3e8cbe7ff3d538de8d000561efbcccd"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/programs/yield.sl",
+          "role": "program",
+          "sha256": "42db567791a01c0862769950e4dc3587c64bfbff24b712e6515901840ae45b9d"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/fixtures/data/build.xml",
+          "role": "fixture-data",
+          "sha256": "0b6b5d21f54dc0de399f60ca87229abd95f6a7c6ab89216c2e3d1544dccaccbe"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/fixtures/data/readme.txt",
+          "role": "fixture-data",
+          "sha256": "c530b92231b9a5c66a56b6904fe4d4753aebfb877ec998f7b9bd4799812c15ed"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/fixtures/data/scripts.jar",
+          "role": "fixture-data",
+          "sha256": "59f666de69bcba67cba31eb81e874ef195a51acf39272d6b1f37d416b907a338"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/fixtures/data/test.jar",
+          "role": "fixture-data",
+          "sha256": "26db522c5f29faabf41f31666b6b1871dd01ebde3aeea545c0aa3bb7da72c6f2"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/fixtures/data2/build.xml",
+          "role": "fixture-data2",
+          "sha256": "0b6b5d21f54dc0de399f60ca87229abd95f6a7c6ab89216c2e3d1544dccaccbe"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/fixtures/data2/test.jar",
+          "role": "fixture-data2",
+          "sha256": "963d3fa4dd35b81ead873ae7d4420ebde4d05cba55320ad4f01b5dc62a792c9c"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/fixtures/data3/build.xml",
+          "role": "fixture-data3",
+          "sha256": "0b6b5d21f54dc0de399f60ca87229abd95f6a7c6ab89216c2e3d1544dccaccbe"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/fixtures/data3/readme.txt",
+          "role": "fixture-data3",
+          "sha256": "c530b92231b9a5c66a56b6904fe4d4753aebfb877ec998f7b9bd4799812c15ed"
+        },
+        {
+          "path": "testdata/upstream/sleep-2.1/fixtures/data3/test.jar",
+          "role": "fixture-data3",
+          "sha256": "0c1865b6cc9b162f1bc331780fe6f9318dd6283793c9583a093752a92d776ee3"
+        }
+      ]
+    },
+    {
+      "id": "cobalt-strike-aggressor-script-examples",
+      "name": "Official Cobalt Strike Aggressor Script examples",
+      "upstream": {
+        "repository": "https://github.com/Cobalt-Strike/aggressor_script_examples",
+        "commit": "36d7514dbec82d53d23f25fe7f9e18f4af613be8",
+        "source_url": "https://github.com/Cobalt-Strike/aggressor_script_examples/tree/36d7514dbec82d53d23f25fe7f9e18f4af613be8"
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "path": "third_party_licenses/Cobalt-Strike-aggressor_script_examples-Apache-2.0.txt",
+        "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+      },
+      "modes": [
+        "parse",
+        "load-with-recording-host",
+        "mock-execute"
+      ],
+      "requirements": [
+        "aggressor-environment-bridges",
+        "cobalt-strike-host-api-mocks"
+      ],
+      "conditional_requirements": [
+        "event-dispatch",
+        "filesystem",
+        "gui-bridge",
+        "java-object-bridge",
+        "threads-and-coroutines"
+      ],
+      "collections": [
+        {
+          "role": "program",
+          "root": "testdata/upstream/aggressor-script-examples",
+          "glob": "*.cna",
+          "count": 18
+        }
+      ],
+      "files": [
+        {
+          "path": "testdata/upstream/aggressor-script-examples/bot.cna",
+          "role": "program",
+          "sha256": "267024a54237186b03dbc51bcdb1ea5ea15ee06a6f4534ec0866bef4363c4523"
+        },
+        {
+          "path": "testdata/upstream/aggressor-script-examples/callany.cna",
+          "role": "program",
+          "sha256": "1db178badd3de01724b61ba2ad6ad96bd95fd89aae857cb8c3382251af819315"
+        },
+        {
+          "path": "testdata/upstream/aggressor-script-examples/checkit.cna",
+          "role": "program",
+          "sha256": "a79daa7ec6571413dd3cb34867319812f216fea619130ee64a685e4779d4de6f"
+        },
+        {
+          "path": "testdata/upstream/aggressor-script-examples/data_models.cna",
+          "role": "program",
+          "sha256": "4d4a7a81c5fa9d688a32d753d191700ce6282988044c4dbe1a0650df919f2c4f"
+        },
+        {
+          "path": "testdata/upstream/aggressor-script-examples/getenv.cna",
+          "role": "program",
+          "sha256": "c338b8c9fd889b9df6cc8b474bb6fd2ad416bf1500a3790099a9ca6ac0e273b2"
+        },
+        {
+          "path": "testdata/upstream/aggressor-script-examples/getexplorer.cna",
+          "role": "program",
+          "sha256": "b81a35b7207726cac66d84873d88d0252f65f3b674019068b63a39a92d2bae8a"
+        },
+        {
+          "path": "testdata/upstream/aggressor-script-examples/getpidany.cna",
+          "role": "program",
+          "sha256": "16aac7bbf7384945c85196153874605be42161048e5db0840662bfbacafa4536"
+        },
+        {
+          "path": "testdata/upstream/aggressor-script-examples/initial.cna",
+          "role": "program",
+          "sha256": "5f87224fe6319a3566a979b39a1d4e4bcaf424d6321e2ddbb586e1e08c2bfd9c"
+        },
+        {
+          "path": "testdata/upstream/aggressor-script-examples/mkimport.cna",
+          "role": "program",
+          "sha256": "7b7311940192b2ad1cc10fc240cfc85c4a8dd5b9ce0d06ce75f6f175f2c6e625"
+        },
+        {
+          "path": "testdata/upstream/aggressor-script-examples/mouse.cna",
+          "role": "program",
+          "sha256": "bc6fe2823f43777570cb9c097ea25af3badd95c4fb1f06d05450b71eca6792be"
+        },
+        {
+          "path": "testdata/upstream/aggressor-script-examples/oneliner.cna",
+          "role": "program",
+          "sha256": "74ca4bea6afb7eef3112ad8d2966e58683201c6e0e875386eff9a9ac668b1de7"
+        },
+        {
+          "path": "testdata/upstream/aggressor-script-examples/portfwd.cna",
+          "role": "program",
+          "sha256": "d565af8ff91e5cf80f8cfabdca4f18da862a44bc4b3eb15e0f31544a56faaae6"
+        },
+        {
+          "path": "testdata/upstream/aggressor-script-examples/random_string.cna",
+          "role": "program",
+          "sha256": "2ca01fbe5080a20a3fa812f073f1f8591d6d20809cd8a325b16ff7c0043f6e3a"
+        },
+        {
+          "path": "testdata/upstream/aggressor-script-examples/safedelete.cna",
+          "role": "program",
+          "sha256": "67e7c051a4558bbc9cb7d339c448262eeeb1a9f432b3852920fa1d778376ed61"
+        },
+        {
+          "path": "testdata/upstream/aggressor-script-examples/search.cna",
+          "role": "program",
+          "sha256": "869fa0144f1f3fb39829a895cf8a86ae2ffcfdb9a592fec8abc0e32e18127c46"
+        },
+        {
+          "path": "testdata/upstream/aggressor-script-examples/stagelesspython.cna",
+          "role": "program",
+          "sha256": "71812ebad5ed8ac57019a7c42be790cad195f2ce8b315c4d9f86c03eddb73cc8"
+        },
+        {
+          "path": "testdata/upstream/aggressor-script-examples/stagelessweb.cna",
+          "role": "program",
+          "sha256": "1579b49061a10e2cb3e91dcf1412efa0adcbd9f3a8824cd223219722e48d1d07"
+        },
+        {
+          "path": "testdata/upstream/aggressor-script-examples/tokenToEmail.cna",
+          "role": "program",
+          "sha256": "54fc285369f2179ec5a73e221cdcb675d10e26906c9866a42c923ed5ba488853"
+        }
+      ]
+    }
+  ]
+}
