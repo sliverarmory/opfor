@@ -15,11 +15,23 @@ import (
 	"strconv"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 )
 
 const officialSleep21JARSHA256 = "0ddde5e9e8d8d8d334d071b1f887c379f5d0be9b190566f05365997b3e375ff1"
+
+func TestSleepJavaConnectErrorNormalizesWSAConnectionRefused(t *testing.T) {
+	err := &net.OpError{
+		Op:  "dial",
+		Net: "tcp",
+		Err: os.NewSyscallError("connectex", syscall.Errno(10_061)),
+	}
+	if got := sleepJavaConnectError("127.0.0.1", err).Error(); got != "java.net.ConnectException: Connection refused" {
+		t.Fatalf("WSAECONNREFUSED = %q, want Java ConnectException", got)
+	}
+}
 
 func TestSocketTerminalCloseUnblocksWriterBeforeTakingHandleLock(t *testing.T) {
 	runtimeInstance, err := New()
