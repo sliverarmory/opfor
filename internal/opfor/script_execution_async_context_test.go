@@ -118,6 +118,55 @@ func (ctx *trackedAfterFuncContext) activeAfterFuncs() int {
 	return ctx.active
 }
 
+func TestNewExecutionCallerCaptureObservesAlreadyCanceledSourceSynchronously(t *testing.T) {
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	source := &trackedAfterFuncContext{
+		Context: canceled,
+		done:    canceled.Done(),
+	}
+	captured, release, _ := newExecutionCallerCapture(
+		source,
+		[]context.Context{source},
+		nil,
+	)
+	t.Cleanup(release)
+
+	if !errors.Is(captured.Err(), context.Canceled) {
+		t.Fatalf("captured error = %v, want context.Canceled", captured.Err())
+	}
+	if !errors.Is(context.Cause(captured), context.Canceled) {
+		t.Fatalf("captured cause = %v, want context.Canceled", context.Cause(captured))
+	}
+}
+
+func TestCaptureExecutionCallerLeaseRetainsCaptureWithoutActiveToken(t *testing.T) {
+	captured, releaseCapture, _ := newExecutionCallerCapture(
+		context.Background(),
+		nil,
+		nil,
+	)
+	t.Cleanup(releaseCapture)
+	held, releaseHeld := captureExecutionCallerLease(captured)
+	t.Cleanup(releaseHeld)
+
+	releaseCapture()
+	select {
+	case <-held.Done():
+		t.Fatalf("retained caller ended with its original owner: %v", context.Cause(held))
+	default:
+	}
+	releaseHeld()
+	select {
+	case <-held.Done():
+	case <-time.After(2 * time.Second):
+		t.Fatal("retained caller remained live after its final owner released")
+	}
+	if !errors.Is(held.Err(), context.Canceled) {
+		t.Fatalf("retained caller error = %v, want context.Canceled", held.Err())
+	}
+}
+
 func TestGenerationExecutionReleaseCleansCapturedCallerBridge(t *testing.T) {
 	runtimeInstance, err := New()
 	if err != nil {

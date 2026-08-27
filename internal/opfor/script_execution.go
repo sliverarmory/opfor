@@ -266,6 +266,14 @@ func newExecutionCallerCapture(
 		)
 	}
 	capture.stopBridge = context.AfterFunc(bridge, capture.cleanup)
+	// AfterFunc always invokes its callback asynchronously. Recheck every
+	// registered source before publishing the bridge so an already-canceled
+	// importer cannot leave the returned context temporarily live.
+	for _, source := range sources {
+		if source != nil && source.Err() != nil {
+			propagate(source)
+		}
+	}
 	close(capture.ready)
 	return detachedScriptCancellationContext{
 		values:       context.WithoutCancel(values),
@@ -748,6 +756,14 @@ func captureExecutionCallerLease(ctx context.Context) (context.Context, func()) 
 		return context.Background(), func() {}
 	}
 	if !hasActiveExecutionToken(ctx) {
+		// A runtime-owned task bridge reaches its first execution before it has
+		// any OPFOR token. The new token will retain ctx as its caller, so retain
+		// that bridge now rather than letting task teardown finalize it underneath
+		// the still-active token.
+		release, retained := retainExecutionCaller(ctx)
+		if retained {
+			return ctx, idempotentContextRelease(release)
+		}
 		return ctx, func() {}
 	}
 	fallback, releaseFallback := detachExecutionLeaseCancellationLease(ctx)
@@ -802,13 +818,14 @@ func (ctx callbackContextSnapshot) retainExecutionCaller() (func(), bool) {
 }
 
 func captureCallbackSchedulingContext(ctx context.Context) (context.Context, *executionMeter) {
-	retained, _ := captureExecutionCallerLease(ctx)
+	retained, releaseRetained := captureExecutionCallerLease(ctx)
+	context.AfterFunc(retained, releaseRetained)
 	meter, _ := retained.Value(executionMeterKey{}).(*executionMeter)
 	// Importer dispatchers may retain the scheduling context after their method
 	// returns, and the interface has no explicit completion hook. Keep this one
-	// boundary source-owned: importer cancellation/deadline tears the bridge down,
-	// while dropping only the parent wrapper must not cancel a retained Done
-	// channel or derived child early.
+	// boundary source-owned: importer cancellation/deadline releases the retained
+	// owner and tears the bridge down; dropping only the parent wrapper must not
+	// cancel a retained Done channel or derived child early.
 	return callbackContextSnapshot{Context: retained}, meter
 }
 
@@ -871,10 +888,22 @@ func detachExecutionLeaseCancellationLease(ctx context.Context) (context.Context
 	if ctx == nil {
 		return context.Background(), func() {}
 	}
+	const (
+		callerSourceNone = iota
+		callerSourceScript
+		callerSourceRuntime
+		callerSourcePortableRun
+		callerSourceUIAncestry
+	)
 	for {
 		result := ctx
 		detached := false
 		var cancellation context.Context
+		selectedSource := callerSourceNone
+		var selectedScript *scriptExecutionToken
+		var selectedRuntime *runtimeExecutionToken
+		var selectedPortableRun *portableScriptInstanceRunToken
+		var selectedUIAncestry *aggressorUICallbackAncestry
 		if token, _ := ctx.Value(scriptExecutionContextKey{}).(*scriptExecutionToken); token != nil {
 			for token != nil && !token.active.Load() {
 				token = token.parent
@@ -882,6 +911,8 @@ func detachExecutionLeaseCancellationLease(ctx context.Context) (context.Context
 			if token != nil {
 				result = detachScriptCancellation(result, token)
 				cancellation = token.caller
+				selectedSource = callerSourceScript
+				selectedScript = token
 				detached = true
 			}
 		}
@@ -895,6 +926,8 @@ func detachExecutionLeaseCancellationLease(ctx context.Context) (context.Context
 					cancellation: token.caller,
 				}
 				cancellation = token.caller
+				selectedSource = callerSourceRuntime
+				selectedRuntime = token
 				detached = true
 			}
 		}
@@ -909,6 +942,8 @@ func detachExecutionLeaseCancellationLease(ctx context.Context) (context.Context
 					cancellation: token.caller,
 				}
 				cancellation = token.caller
+				selectedSource = callerSourcePortableRun
+				selectedPortableRun = token
 				detached = true
 				break
 			}
@@ -928,6 +963,8 @@ func detachExecutionLeaseCancellationLease(ctx context.Context) (context.Context
 					values:       context.WithoutCancel(result),
 					cancellation: cancellation,
 				}
+				selectedSource = callerSourceUIAncestry
+				selectedUIAncestry = ancestry
 			}
 		}
 		result = withoutPortableScriptInstanceRunOwner(result)
@@ -942,6 +979,23 @@ func detachExecutionLeaseCancellationLease(ctx context.Context) (context.Context
 		release, retained := retainExecutionCaller(cancellation)
 		if retained {
 			return result, idempotentContextRelease(release)
+		}
+		selectedSourceActive := false
+		switch selectedSource {
+		case callerSourceScript:
+			selectedSourceActive = selectedScript != nil && selectedScript.active.Load()
+		case callerSourceRuntime:
+			selectedSourceActive = selectedRuntime != nil && selectedRuntime.active.Load()
+		case callerSourcePortableRun:
+			selectedSourceActive = selectedPortableRun != nil && selectedPortableRun.active.Load()
+		case callerSourceUIAncestry:
+			selectedSourceActive = selectedUIAncestry != nil && selectedUIAncestry.active.Load()
+		}
+		if cancellation.Err() != nil && selectedSourceActive {
+			// A final source owner can win immediately after admission. Its
+			// terminal context is still safe to observe, but retrying the same
+			// active token can never acquire ownership and would livelock.
+			return result, func() {}
 		}
 		// The selected token stopped between its active check and retain. Its
 		// owner always clears active before dropping the final reference, so a
