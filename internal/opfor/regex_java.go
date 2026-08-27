@@ -107,6 +107,7 @@ type sleepRegex struct {
 	expression *regexp2.Regexp
 	names      map[string]int
 	groups     int
+	whole      bool
 }
 
 func compileSleepRegex(pattern string, whole bool) (*sleepRegex, error) {
@@ -130,7 +131,7 @@ func compileSleepRegex(pattern string, whole bool) (*sleepRegex, error) {
 		return nil, fmt.Errorf("opfor: invalid regular expression %q: %w", pattern, err)
 	}
 	expression.MatchTimeout = sleepRegexMatchTimeout
-	return &sleepRegex{expression: expression, names: names, groups: groups}, nil
+	return &sleepRegex{expression: expression, names: names, groups: groups, whole: whole}, nil
 }
 
 // compileSleepRegexBridge models RegexBridge.getPattern. Pattern.compile
@@ -328,6 +329,23 @@ func (r *sleepRegex) FindStringSubmatchIndexContext(ctx context.Context, input s
 		return nil, err
 	}
 	text := newSleepRegexText(input)
+	// ismatch compiles an absolute whole-input expression. With no capture
+	// groups, RegexBridge only observes success: Sleep's matcher group zero is
+	// not included in matched(), so avoid materializing a regexp2 Match and its
+	// capture arrays on this common predicate path.
+	if r.whole && r.groups == 0 {
+		matched, err := r.expression.MatchRunesContext(ctx, text.runes)
+		if err != nil || !matched {
+			return nil, err
+		}
+		if err := executionContextError(ctx); err != nil {
+			return nil, err
+		}
+		if err := consumeInstruction(ctx); err != nil {
+			return nil, err
+		}
+		return []int{0, len(input)}, nil
+	}
 	match, err := r.expression.FindRunesMatchContext(ctx, text.runes)
 	if err != nil || match == nil {
 		return nil, err
@@ -533,6 +551,13 @@ func (r *sleepRegex) utf16Indices(offsets []int, match *regexp2.Match) []int {
 		start := group.Index
 		end := group.Index + group.Length
 		if start < 0 || end < start || end >= len(offsets) {
+			// ASCII text needs no offset table: rune, byte, and UTF-16 indices
+			// are identical. newSleepRegexText deliberately leaves it nil.
+			if offsets != nil || start < 0 || end < start {
+				continue
+			}
+			indices[groupNumber*2] = start
+			indices[groupNumber*2+1] = end
 			continue
 		}
 		indices[groupNumber*2] = offsets[start]
@@ -553,6 +578,11 @@ func (r *sleepRegex) byteIndices(text sleepRegexText, match *regexp2.Match) []in
 		}
 		start := group.Index
 		end := group.Index + group.Length
+		if text.ascii {
+			indices[groupNumber*2] = start
+			indices[groupNumber*2+1] = end
+			continue
+		}
 		if start < 0 || end < start || end >= len(text.byteOffsets) {
 			continue
 		}
@@ -571,13 +601,23 @@ type sleepRegexText struct {
 	runes        []rune
 	byteOffsets  []int
 	utf16Offsets []int
+	ascii        bool
 }
 
 func newSleepRegexText(value string) sleepRegexText {
+	if sleepRegexASCII(value) {
+		runes := make([]rune, len(value))
+		for index := range value {
+			runes[index] = rune(value[index])
+		}
+		return sleepRegexText{runes: runes, ascii: true}
+	}
+	runeCount := utf8.RuneCountInString(value)
+	offsets := make([]int, (runeCount+1)*2)
 	text := sleepRegexText{
-		runes:        make([]rune, 0, utf8.RuneCountInString(value)),
-		byteOffsets:  make([]int, 0, utf8.RuneCountInString(value)+1),
-		utf16Offsets: make([]int, 0, utf8.RuneCountInString(value)+1),
+		runes:        make([]rune, 0, runeCount),
+		byteOffsets:  offsets[: 0 : runeCount+1],
+		utf16Offsets: offsets[runeCount+1 : runeCount+1 : (runeCount+1)*2],
 	}
 	units := 0
 	for index := 0; index < len(value); {
@@ -602,6 +642,15 @@ func newSleepRegexText(value string) sleepRegexText {
 	return text
 }
 
+func sleepRegexASCII(value string) bool {
+	for index := range value {
+		if value[index] >= utf8.RuneSelf {
+			return false
+		}
+	}
+	return true
+}
+
 func (t sleepRegexText) supplementaryBoundaries() []sleepRegexSupplementaryBoundary {
 	boundaries := make([]sleepRegexSupplementaryBoundary, 0)
 	for index, character := range t.runes {
@@ -616,6 +665,9 @@ func (t sleepRegexText) supplementaryBoundaries() []sleepRegexSupplementaryBound
 }
 
 func (t sleepRegexText) runeIndexAtByteOffset(byteOffset int) (int, bool) {
+	if t.ascii {
+		return byteOffset, byteOffset >= 0 && byteOffset <= len(t.runes)
+	}
 	left, right := 0, len(t.byteOffsets)
 	for left < right {
 		middle := left + (right-left)/2
@@ -644,6 +696,9 @@ func sleepRegexUTF16ToByteIndex(value string, target int) (int, bool) {
 		return 0, false
 	}
 	text := newSleepRegexText(value)
+	if text.ascii {
+		return target, target <= len(value)
+	}
 	units := 0
 	for index, character := range text.runes {
 		if units == target {

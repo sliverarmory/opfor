@@ -7,6 +7,24 @@ import (
 	"testing"
 )
 
+func TestNormalizeVariableNamePreservesGeneralWhitespaceSemantics(t *testing.T) {
+	for _, test := range []struct {
+		input string
+		want  string
+	}{
+		{input: "$value", want: "$value"},
+		{input: " value ", want: "$value"},
+		{input: "@items\t", want: "@items"},
+		{input: "%hash\u00a0", want: "%hash"},
+		{input: "", want: "$"},
+		{input: "plain", want: "$plain"},
+	} {
+		if got := normalizeVariableName(test.input); got != test.want {
+			t.Fatalf("normalizeVariableName(%q) = %q, want %q", test.input, got, test.want)
+		}
+	}
+}
+
 func TestPushlAndPoplReplaceAndRestoreTheActiveLocalLevel(t *testing.T) {
 	program, err := CompileString("scope-stack.sl", `
 inline transfer {

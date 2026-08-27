@@ -314,6 +314,17 @@ func (re *Regexp) MatchRunes(r []rune) (bool, error) {
 	return m != nil, nil
 }
 
+// MatchRunesContext reports whether r matches and interrupts backtracking when
+// ctx is canceled. As with MatchRunes, the runner retains its match object so
+// callers that only need a boolean do not allocate capture results.
+func (re *Regexp) MatchRunesContext(ctx context.Context, r []rune) (bool, error) {
+	m, err := re.runContext(ctx, true, -1, r)
+	if err != nil {
+		return false, err
+	}
+	return m != nil, nil
+}
+
 // GetGroupNames Returns the set of strings used to name capturing groups in the expression.
 func (re *Regexp) GetGroupNames() []string {
 	var result []string

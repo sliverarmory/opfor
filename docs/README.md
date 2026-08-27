@@ -26,12 +26,18 @@ performance. Its checkable additions are:
 - `BenchmarkSleep*` workloads for arithmetic, Sleep/native calls, arrays,
   foreach, strings, regex, literals/closures, runtime lifecycle, and the pinned
   upstream corpus, plus `make bench-sleep` and a required CI smoke run;
-- zero-allocation direct `Array.Len`, `Get`, and `Set`, and a root-only linear
-  append path which retains sublist invalidation and resource accounting;
+- zero-allocation direct `Array.Len`, `Get`, and `Set`, a fused ordinary-array
+  execution read, and a root-only linear append path which retains sublist
+  invalidation and resource accounting;
 - disabled-taint, unmetered-VM, synchronous closure/native lease, and simple
   evaluator fast paths with cancellation, unload, and limited-mode regressions;
+- lazy predicate/profiler trace formatting, built-in-scope lookup without
+  importer metadata construction, and single-argument call evaluation without
+  temporary group-ordering slices;
 - compile-time numeric/string literal and closure-function templates, and a
   concurrency-safe 128-entry per-runtime regex LRU;
+- plain-text concatenation without eager UTF-16/provenance arrays, plus a
+  per-match cached cancellation channel in the regex runner;
 - explicit cross-runtime ScriptLoader compilation sharing through
   `NewScriptLoaderCache` and `WithScriptLoaderCache`; and
 - official-JAR regressions for saved closure control contexts and non-empty
@@ -64,10 +70,10 @@ measurements; the runner also supports `-execute-iterations` and
 `-compile-iterations`.
 
 The checked-in [alpha.2 comparison](benchmarks/opfor-vs-sleep-2.1-alpha.2.md)
-records the default run on an Apple M5 Max. It shows OPFOR compiling every
+records a 25-sample run on an Apple M5 Max. It shows OPFOR compiling every
 workload faster, while the warmed Java interpreter remains faster for every
-execution workload; string concatenation, array append, and regex matching have
-the largest measured execution gaps.
+execution workload; array append, foreach, and regex matching have the largest
+measured execution gaps.
 
 OPFOR is not a JVM and `Host` is not a sandbox. Portable file, process, socket,
 and console functions perform real local effects. Java-style object syntax is

@@ -2354,7 +2354,7 @@ func (c *scriptClosure) invokeArguments(ctx context.Context, arguments []Argumen
 	}
 	defer func() { resultErr = joinExecutionError(resultErr, release) }()
 	caller := currentFiber(ctx)
-	profileFrame := caller.beginProfileCall(closureInvocationProfileName(c, arguments))
+	profileFrame := caller.beginClosureProfileCall(c, arguments)
 	c.mu.Lock()
 	fiber := c.popSuspendedLocked()
 	c.mu.Unlock()

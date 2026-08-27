@@ -17,6 +17,25 @@ func TestFindRunesMatchContextCancellation(t *testing.T) {
 	}
 }
 
+func TestMatchRunesContext(t *testing.T) {
+	expression := MustCompile(`^a+$`, None)
+	matched, err := expression.MatchRunesContext(context.Background(), []rune("aaa"))
+	if err != nil || !matched {
+		t.Fatalf("MatchRunesContext match = (%t, %v), want (true, nil)", matched, err)
+	}
+	matched, err = expression.MatchRunesContext(context.Background(), []rune("aab"))
+	if err != nil || matched {
+		t.Fatalf("MatchRunesContext miss = (%t, %v), want (false, nil)", matched, err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	matched, err = expression.MatchRunesContext(ctx, []rune("aaa"))
+	if matched || !errors.Is(err, context.Canceled) {
+		t.Fatalf("MatchRunesContext canceled = (%t, %v), want (false, context.Canceled)", matched, err)
+	}
+}
+
 func TestFindNextMatchContextCancellation(t *testing.T) {
 	expression := MustCompile(`a`, None)
 	first, err := expression.FindRunesMatch([]rune("aa"))

@@ -198,6 +198,20 @@ func (s *scope) failedChild(kind VariableContainerKind, err error) *scope {
 }
 
 func normalizeVariableName(name string) string {
+	// Compiler-produced names already carry a Sleep sigil and have no source
+	// whitespace. They dominate evaluator lookups, so avoid a Unicode trim scan
+	// on every loop operand while retaining the general importer-facing
+	// normalization below. Non-ASCII endings take the slow path because
+	// strings.TrimSpace recognizes Unicode whitespace.
+	if len(name) != 0 {
+		switch name[0] {
+		case '$', '@', '%':
+			last := name[len(name)-1]
+			if last > ' ' && last < 0x80 {
+				return name
+			}
+		}
+	}
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return "$"
@@ -243,13 +257,14 @@ func (s *scope) ownCellAt(ctx context.Context, name string, span Span) (*Cell, b
 	if s.initErr != nil {
 		return nil, false, s.initErr
 	}
-	access := s.access(name, span)
 	if s.container == nil {
+		name = normalizeVariableName(name)
 		s.mu.RLock()
-		cell := s.cells[access.Name]
+		cell := s.cells[name]
 		s.mu.RUnlock()
 		return cell, cell != nil, nil
 	}
+	access := s.access(name, span)
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -292,13 +307,14 @@ func (s *scope) scalarExistsAt(ctx context.Context, name string, span Span) (boo
 	if s.initErr != nil {
 		return false, s.initErr
 	}
-	access := s.access(name, span)
 	if s.container == nil {
+		name = normalizeVariableName(name)
 		s.mu.RLock()
-		exists := s.cells[access.Name] != nil
+		exists := s.cells[name] != nil
 		s.mu.RUnlock()
 		return exists, nil
 	}
+	access := s.access(name, span)
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -341,16 +357,18 @@ func (s *scope) putCellAt(ctx context.Context, name string, cell *Cell, span Spa
 	if s.initErr != nil {
 		return s.initErr
 	}
-	access := s.access(name, span)
 	if cell == nil {
+		access := s.access(name, span)
 		return variableProviderError(VariableProviderPut, access.RuntimeID, access.Script, access.Span, access.Name, errors.New("cannot store a nil cell"))
 	}
 	if s.container == nil {
+		name = normalizeVariableName(name)
 		s.mu.Lock()
-		s.cells[access.Name] = cell
+		s.cells[name] = cell
 		s.mu.Unlock()
 		return nil
 	}
+	access := s.access(name, span)
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -377,13 +395,14 @@ func (s *scope) removeOwnAt(ctx context.Context, name string, span Span) error {
 	if s.initErr != nil {
 		return s.initErr
 	}
-	access := s.access(name, span)
 	if s.container == nil {
+		name = normalizeVariableName(name)
 		s.mu.Lock()
-		delete(s.cells, access.Name)
+		delete(s.cells, name)
 		s.mu.Unlock()
 		return nil
 	}
+	access := s.access(name, span)
 	if ctx == nil {
 		ctx = context.Background()
 	}

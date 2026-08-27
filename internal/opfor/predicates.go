@@ -112,7 +112,7 @@ func (f *fiber) evalPredicate(ctx context.Context, expression ast.Expr) (Value, 
 			return Null(), err
 		}
 		if known {
-			f.tracePredicate(fmt.Sprintf("%s %s %s ? %s", left.Describe(), node.Op, right.Describe(), truthWord(result.Truth())), node.Span())
+			f.traceBinaryPredicate(left, node.Op, right, result.Truth(), node.Span())
 		}
 		return Bool(result.Truth()), nil
 	case *ast.UnaryExpr:
@@ -127,7 +127,7 @@ func (f *fiber) evalPredicate(ctx context.Context, expression ast.Expr) (Value, 
 				return Null(), err
 			}
 			if knownUnaryPredicate(op) {
-				f.tracePredicate(fmt.Sprintf("%s %s ? %s", node.Op, operand.Describe(), truthWord(value.Truth())), node.Span())
+				f.traceUnaryPredicate(node.Op, operand, value.Truth(), node.Span())
 			}
 			return Bool(value.Truth()), nil
 		}
@@ -135,14 +135,14 @@ func (f *fiber) evalPredicate(ctx context.Context, expression ast.Expr) (Value, 
 		if err != nil {
 			return Null(), err
 		}
-		f.tracePredicate(fmt.Sprintf("-istrue %s ? %s", value.Describe(), truthWord(value.Truth())), node.Span())
+		f.traceTruthPredicate(value, node.Span())
 		return Bool(value.Truth()), nil
 	default:
 		value, err := f.eval(ctx, expression)
 		if err != nil {
 			return Null(), err
 		}
-		f.tracePredicate(fmt.Sprintf("-istrue %s ? %s", value.Describe(), truthWord(value.Truth())), expression.Span())
+		f.traceTruthPredicate(value, expression.Span())
 		return Bool(value.Truth()), nil
 	}
 }
@@ -263,17 +263,53 @@ func knownUnaryPredicate(operator string) bool {
 	}
 }
 
-func (f *fiber) tracePredicate(message string, span Span) {
+func (f *fiber) predicateTraceScript() *Script {
 	if f == nil || f.closure == nil || f.closure.script == nil {
-		return
+		return nil
 	}
 	script := f.closure.script
 	script.mu.RLock()
 	enabled := script.debug&debugTraceLogic == debugTraceLogic
 	script.mu.RUnlock()
 	if !enabled || script.runtime == nil || script.runtime.stderr == nil {
+		return nil
+	}
+	return script
+}
+
+func (f *fiber) traceBinaryPredicate(left Value, operator string, right Value, result bool, span Span) {
+	script := f.predicateTraceScript()
+	if script == nil {
 		return
 	}
+	f.writePredicateTrace(script, fmt.Sprintf("%s %s %s ? %s", left.Describe(), operator, right.Describe(), truthWord(result)), span)
+}
+
+func (f *fiber) traceUnaryPredicate(operator string, operand Value, result bool, span Span) {
+	script := f.predicateTraceScript()
+	if script == nil {
+		return
+	}
+	f.writePredicateTrace(script, fmt.Sprintf("%s %s ? %s", operator, operand.Describe(), truthWord(result)), span)
+}
+
+func (f *fiber) traceTruthPredicate(value Value, span Span) {
+	script := f.predicateTraceScript()
+	if script == nil {
+		return
+	}
+	f.writePredicateTrace(script, fmt.Sprintf("-istrue %s ? %s", value.Describe(), truthWord(value.Truth())), span)
+}
+
+func (f *fiber) tracePresencePredicate(value Value, present bool, span Span) {
+	script := f.predicateTraceScript()
+	if script == nil {
+		return
+	}
+	f.writePredicateTrace(script, fmt.Sprintf("%s !is $null ? %s", value.Describe(), truthWord(present)), span)
+}
+
+func (f *fiber) writePredicateTrace(script *Script, message string, span Span) {
 	if span.Source != "" {
 		_, _ = fmt.Fprintf(script.runtime.stderr, "Trace: %s at %s:%d\n", message, span.Source, sleepDisplayLine(span))
 		return

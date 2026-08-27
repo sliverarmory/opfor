@@ -184,6 +184,40 @@ func sleepStringValueSlice(value Value, start, end int) Value {
 }
 
 func sleepStringConcat(values ...Value) Value {
+	// Most Sleep concatenations join ordinary text produced by literals or
+	// scalar coercion. Such values have no explicit UTF-16/raw-provenance
+	// representation, so their Go string spelling can be joined directly: Go
+	// concatenation preserves valid UTF-8 and sleepStringUnits will derive the
+	// same Java code units lazily if a later operation needs them. Keep every
+	// value with explicit units on the generic path below so binary octets,
+	// unpaired surrogates, and provenance masks remain exact.
+	allPlainText := true
+	totalBytes := 0
+	for index := range values {
+		values[index] = sleepStringCoercion(values[index])
+		if values[index].stringUnits != nil {
+			allPlainText = false
+		}
+		totalBytes += len(values[index].data.(string))
+	}
+	if allPlainText {
+		switch len(values) {
+		case 0:
+			return Value{kind: KindString, data: ""}
+		case 1:
+			return Value{kind: KindString, data: values[0].data.(string)}
+		case 2:
+			return Value{kind: KindString, data: values[0].data.(string) + values[1].data.(string)}
+		default:
+			var builder strings.Builder
+			builder.Grow(totalBytes)
+			for _, value := range values {
+				builder.WriteString(value.data.(string))
+			}
+			return Value{kind: KindString, data: builder.String()}
+		}
+	}
+
 	var units []uint16
 	var raw []bool
 	for _, value := range values {

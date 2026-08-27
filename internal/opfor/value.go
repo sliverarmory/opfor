@@ -515,8 +515,9 @@ func (c *Cell) Get() Value {
 		return Null()
 	}
 	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.value
+	value := c.value
+	c.mu.RUnlock()
+	return value
 }
 
 // Set replaces the cell's value. Setting a nil cell has no effect.
@@ -885,11 +886,14 @@ func (a *Array) Len() int {
 		return 0
 	}
 	storage.mu.RLock()
-	defer storage.mu.RUnlock()
 	if !window.valid {
-		return len(window.cached)
+		length := len(window.cached)
+		storage.mu.RUnlock()
+		return length
 	}
-	return window.end - window.start
+	length := window.end - window.start
+	storage.mu.RUnlock()
+	return length
 }
 
 func normalizeArrayIndex(index, length int) (int, bool) {
@@ -920,23 +924,48 @@ func (a *Array) Cell(index int) (*Cell, bool) {
 		return nil, false
 	}
 	storage.mu.RLock()
-	defer storage.mu.RUnlock()
 	if !window.valid {
+		storage.mu.RUnlock()
 		return nil, false
 	}
 	index, ok := normalizeArrayIndex(index, window.end-window.start)
 	if !ok {
+		storage.mu.RUnlock()
 		return nil, false
 	}
-	return storage.items[window.start+index], true
+	cell := storage.items[window.start+index]
+	storage.mu.RUnlock()
+	return cell, true
 }
 
 // Get returns the value at index using Cell's negative-index behavior.
 func (a *Array) Get(index int) (Value, bool) {
-	cell, ok := a.Cell(index)
-	if !ok {
+	if a == nil {
 		return Null(), false
 	}
+	if a.backend != nil {
+		cell, ok := a.backend.cell(index)
+		if !ok {
+			return Null(), false
+		}
+		return cell.Get(), true
+	}
+	storage, window := a.arrayStorage()
+	if storage == nil || window == nil {
+		return Null(), false
+	}
+	storage.mu.RLock()
+	if !window.valid {
+		storage.mu.RUnlock()
+		return Null(), false
+	}
+	index, ok := normalizeArrayIndex(index, window.end-window.start)
+	if !ok {
+		storage.mu.RUnlock()
+		return Null(), false
+	}
+	cell := storage.items[window.start+index]
+	storage.mu.RUnlock()
 	return cell.Get(), true
 }
 

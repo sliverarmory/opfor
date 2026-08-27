@@ -140,11 +140,14 @@ func compileProgramLiterals(tree *ast.Script) (map[*ast.NumberExpr]compiledNumbe
 			}
 			template.decoded, template.err = decodeSleepEscapesAt(node.Text, node.TextRange)
 			if template.err == nil && node.Kind == ast.DoubleQuotedString && !strings.Contains(template.decoded.text, "$") {
-				template.value = sleepStringReplaceAll(
-					template.decoded.valueRange(0, len(template.decoded.text)),
-					String(escapedDollarSentinel),
-					String("$"),
-				)
+				template.value = template.decoded.valueRange(0, len(template.decoded.text))
+				if strings.Contains(template.decoded.text, escapedDollarSentinel) {
+					template.value = sleepStringReplaceAll(
+						template.value,
+						String(escapedDollarSentinel),
+						String("$"),
+					)
+				}
 				template.static = true
 			}
 			stringsByNode[node] = template

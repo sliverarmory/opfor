@@ -124,13 +124,39 @@ func (f *fiber) beginProfileCall(function string) *profileCallFrame {
 	if f == nil || f.closure == nil || f.closure.script == nil || function == "" {
 		return nil
 	}
+	if !f.profileCallsEnabled() {
+		return nil
+	}
+	return f.beginEnabledProfileCall(function)
+}
+
+// beginClosureProfileCall defers closure name rendering until profiling is
+// enabled. closure.String walks instructions and formats a source location;
+// doing that for every ordinary Sleep call used to allocate even when the
+// profiler was disabled.
+func (f *fiber) beginClosureProfileCall(closure *scriptClosure, arguments []Argument) *profileCallFrame {
+	if !f.profileCallsEnabled() {
+		return nil
+	}
+	return f.beginEnabledProfileCall(closureInvocationProfileName(closure, arguments))
+}
+
+func (f *fiber) profileCallsEnabled() bool {
+	if f == nil || f.closure == nil || f.closure.script == nil {
+		return false
+	}
 	script := f.closure.script
 	script.mu.RLock()
 	enabled := script.debug&debugTraceCalls == debugTraceCalls
 	script.mu.RUnlock()
-	if !enabled {
+	return enabled
+}
+
+func (f *fiber) beginEnabledProfileCall(function string) *profileCallFrame {
+	if f == nil || f.closure == nil || f.closure.script == nil || function == "" {
 		return nil
 	}
+	script := f.closure.script
 	profiler := script.profilerState()
 	if profiler == nil || script.runtime == nil || script.runtime.clock == nil {
 		return nil

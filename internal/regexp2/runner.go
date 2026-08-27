@@ -72,6 +72,7 @@ type runner struct {
 	timeout       time.Duration // timeout in milliseconds (needed for actual)
 	deadline      fasttime
 	ctx           context.Context
+	ctxDone       <-chan struct{}
 
 	operator    syntax.InstOp
 	codepos     int
@@ -132,7 +133,11 @@ func (r *runner) scan(ctx context.Context, rt []rune, textstart, reverseFloor, g
 		ctx = context.Background()
 	}
 	r.ctx = ctx
-	defer func() { r.ctx = nil }()
+	r.ctxDone = ctx.Done()
+	defer func() {
+		r.ctx = nil
+		r.ctxDone = nil
+	}()
 	r.timeout = timeout
 	r.ignoreTimeout = (time.Duration(math.MaxInt64) == timeout)
 	r.runtextstart = textstart
@@ -1682,9 +1687,9 @@ func (r *runner) startTimeoutWatch() {
 }
 
 func (r *runner) checkTimeout() error {
-	if r.ctx != nil {
+	if r.ctxDone != nil {
 		select {
-		case <-r.ctx.Done():
+		case <-r.ctxDone:
 			return r.ctx.Err()
 		default:
 		}

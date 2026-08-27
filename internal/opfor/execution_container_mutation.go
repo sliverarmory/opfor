@@ -170,6 +170,10 @@ func (a *Array) cellAtExecution(ctx context.Context, script *Script, index int) 
 }
 
 func (a *Array) getAtExecution(ctx context.Context, script *Script, index int) (Value, bool, error) {
+	if a == nil || a.backend == nil {
+		value, ok := a.Get(index)
+		return value, ok, nil
+	}
 	cell, ok, err := a.cellAtExecution(ctx, script, index)
 	if err != nil || !ok {
 		return Null(), false, err

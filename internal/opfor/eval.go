@@ -333,7 +333,10 @@ func (f *fiber) stringLiteral(ctx context.Context, node *ast.StringExpr) (Value,
 		if err != nil {
 			return Null(), err
 		}
-		value := sleepStringReplaceAll(interpolated, String(escapedDollarSentinel), String("$"))
+		value := interpolated
+		if strings.Contains(decoded.text, escapedDollarSentinel) {
+			value = sleepStringReplaceAll(value, String(escapedDollarSentinel), String("$"))
+		}
 		return f.closure.script.runtime.permeateResultFrom(ctx, value, tainted, node.Span()), nil
 	case ast.BacktickString:
 		command, tainted, err := f.interpolate(ctx, decoded, node.Span())
@@ -2265,6 +2268,17 @@ func (f *fiber) callExpressionArguments(ctx context.Context, call *ast.CallExpr)
 }
 
 func (f *fiber) callArgumentsGrouped(ctx context.Context, expressions []ast.Expr, groupLengths []int) ([]Argument, error) {
+	// A single argument has no cross-group ordering to reconstruct. This is the
+	// dominant Sleep-to-Sleep call shape and avoids allocating the temporary
+	// group-offset and evaluation slices used by the general parameter-term
+	// algorithm below.
+	if len(expressions) == 1 {
+		argument, err := f.callArgument(ctx, expressions[0])
+		if err != nil {
+			return nil, err
+		}
+		return []Argument{argument}, nil
+	}
 	groups := normalizedCallArgumentGroups(len(expressions), groupLengths)
 	starts := make([]int, len(groups))
 	offset := 0

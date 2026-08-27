@@ -570,7 +570,7 @@ func (f *fiber) step(ctx context.Context, instruction bytecode.Instruction) (Val
 		// loop: only $null ends it. Numeric zero and an empty-but-present
 		// string are valid yielded/read values.
 		present := !value.IsNull()
-		f.tracePredicate(fmt.Sprintf("%s !is $null ? %s", value.Describe(), truthWord(present)), instruction.Span)
+		f.tracePresencePredicate(value, present, instruction.Span)
 		if !present {
 			f.pc = instruction.Target
 		} else {
