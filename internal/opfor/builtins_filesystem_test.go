@@ -3,10 +3,7 @@ package opfor
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"fmt"
 	"os"
-	osexec "os/exec"
 	"path/filepath"
 	goruntime "runtime"
 	"strconv"
@@ -298,25 +295,7 @@ func mustInvokeFilesystemString(t *testing.T, runtime *Runtime, name string, arg
 // resolve several of them against the process cwd. Both subprocesses still run
 // from isolated temporary roots as a defense against future probe expansion.
 func TestSleepFileSystemBridgeOfficialJARDifferential(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for differential verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	const officialSHA256 = "0ddde5e9e8d8d8d334d071b1f887c379f5d0be9b190566f05365997b3e375ff1"
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java, err = osexec.LookPath("java")
-		if err != nil {
-			t.Skipf("official JAR supplied but java is unavailable: %v", err)
-		}
-	}
+	jar, java := officialSleepDifferentialTools(t)
 
 	goRoot := t.TempDir()
 	javaRoot := t.TempDir()
@@ -340,7 +319,7 @@ func TestSleepFileSystemBridgeOfficialJARDifferential(t *testing.T) {
 	t.Chdir(goRoot)
 	goOutput := runPureGoFilesystemProbe(t, goRoot)
 	javaSource := sleepFilesystemProbeSource(javaRoot)
-	command := osexec.Command(java, "-jar", jar, "-e", javaSource)
+	command := officialSleepJavaCommand(java, "-jar", jar, "-e", javaSource)
 	command.Dir = javaRoot
 	javaOutput, err := command.CombinedOutput()
 	if err != nil {

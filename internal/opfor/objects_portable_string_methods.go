@@ -521,7 +521,7 @@ func portableJavaStringMatches(ctx context.Context, invocation ObjectInvocation,
 	if regex.Kind() != KindString {
 		return portableNoMatchingMethod(invocation, "java.lang.String"), true, nil
 	}
-	pattern, err := portableJavaStringPattern(ctx, regex, true)
+	pattern, err := portableJavaStringPattern(ctx, invocation.Runtime, regex, true)
 	if err != nil {
 		return Null(), true, err
 	}
@@ -543,7 +543,7 @@ func portableJavaStringRegexReplace(ctx context.Context, invocation ObjectInvoca
 	if regex.IsNull() {
 		return Null(), true, errors.New("java.lang.NullPointerException")
 	}
-	pattern, err := portableJavaStringPattern(ctx, regex, false)
+	pattern, err := portableJavaStringPattern(ctx, invocation.Runtime, regex, false)
 	if err != nil {
 		return Null(), true, err
 	}
@@ -563,7 +563,7 @@ func portableJavaStringRegexReplace(ctx context.Context, invocation ObjectInvoca
 	if first {
 		limit = 1
 	}
-	matches, err := pattern.FindAllStringSubmatchIndexContext(ctx, input, limit)
+	matches, err := pattern.FindAllStringSubmatchUTF16IndexContext(ctx, input, limit)
 	if err != nil {
 		return Null(), true, portableJavaStringRegexMatchError(err)
 	}
@@ -574,27 +574,19 @@ func portableJavaStringRegexReplace(ctx context.Context, invocation ObjectInvoca
 		return Null(), true, errors.New("java.lang.NullPointerException")
 	}
 
-	unitMap, err := newPortableJavaRegexUnitMap(ctx, input)
-	if err != nil {
-		return Null(), true, err
-	}
 	builder := newPortableJavaStringBuilder(sleepStringLength(target))
 	last := 0
 	for matchIndex, match := range matches {
 		if err := portableJavaStringCancellationCheck(ctx, matchIndex); err != nil {
 			return Null(), true, err
 		}
-		unitMatch, mapErr := unitMap.match(match)
-		if mapErr != nil {
-			return Null(), true, mapErr
-		}
-		if err := builder.appendRange(target, last, unitMatch[0]); err != nil {
+		if err := builder.appendRange(target, last, match[0]); err != nil {
 			return Null(), true, err
 		}
-		if err := appendPortableJavaReplacement(ctx, builder, pattern, replacement, target, unitMatch); err != nil {
+		if err := appendPortableJavaReplacement(ctx, builder, pattern, replacement, target, match); err != nil {
 			return Null(), true, err
 		}
-		last = unitMatch[1]
+		last = match[1]
 	}
 	if err := builder.appendRange(target, last, sleepStringLength(target)); err != nil {
 		return Null(), true, err
@@ -692,7 +684,7 @@ func portableJavaStringSplit(ctx context.Context, invocation ObjectInvocation, t
 	if len(invocation.Arguments) == 2 {
 		limit = sleepInt32(invocation.Arg(1))
 	}
-	pattern, err := portableJavaStringPattern(ctx, regex, false)
+	pattern, err := portableJavaStringPattern(ctx, invocation.Runtime, regex, false)
 	if err != nil {
 		return Null(), true, err
 	}
@@ -701,13 +693,9 @@ func portableJavaStringSplit(ctx context.Context, invocation ObjectInvocation, t
 		return value, true, err
 	}
 	input := sleepCanonicalString(target)
-	matches, err := pattern.FindAllStringSubmatchIndexContext(ctx, input, -1)
+	matches, err := pattern.FindAllStringSubmatchUTF16IndexContext(ctx, input, -1)
 	if err != nil {
 		return Null(), true, portableJavaStringRegexMatchError(err)
-	}
-	unitMap, err := newPortableJavaRegexUnitMap(ctx, input)
-	if err != nil {
-		return Null(), true, err
 	}
 	pieces := make([]portableJavaStringSplitSlice, 0, len(matches)+1)
 	index := 0
@@ -716,11 +704,7 @@ func portableJavaStringSplit(ctx context.Context, invocation ObjectInvocation, t
 		if err := portableJavaStringCancellationCheck(ctx, matchIndex); err != nil {
 			return Null(), true, err
 		}
-		start, startOK := unitMap.offset(match[0])
-		end, endOK := unitMap.offset(match[1])
-		if !startOK || !endOK {
-			return Null(), true, errors.New("opfor: regular-expression match did not align to a UTF-16 boundary")
-		}
+		start, end := match[0], match[1]
 		if !matchLimited || len(pieces) < int(limit)-1 {
 			if index == 0 && index == start && start == end {
 				continue
@@ -798,14 +782,20 @@ func portableJavaStringSplitEmptyPattern(ctx context.Context, runtime *Runtime, 
 	return portableJavaStringSplitArray(runtime, target, pieces)
 }
 
-func portableJavaStringPattern(ctx context.Context, regex Value, whole bool) (*sleepRegex, error) {
+func portableJavaStringPattern(ctx context.Context, runtime *Runtime, regex Value, whole bool) (*sleepRegex, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	if err := executionContextError(ctx); err != nil {
 		return nil, err
 	}
-	pattern, err := compileSleepRegex(sleepCanonicalString(regex), whole)
+	var pattern *sleepRegex
+	var err error
+	if runtime != nil {
+		pattern, err = runtime.compileSleepRegexCached(sleepCanonicalString(regex), whole)
+	} else {
+		pattern, err = compileSleepRegex(sleepCanonicalString(regex), whole)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("java.util.regex.PatternSyntaxException: %v", err)
 	}

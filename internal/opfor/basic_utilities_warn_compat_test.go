@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"os"
-	osexec "os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -74,7 +73,7 @@ func TestSleepBasicUtilitiesWarnStackOfficialJARDifferential(t *testing.T) {
 	if err := os.WriteFile(path, []byte(sleepWarnStackProbe), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	want, err := osexec.Command(java, "-jar", jar, path).CombinedOutput()
+	want, err := officialSleepJavaCommand(java, "-jar", jar, path).CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep warn stack probe: %v\n%s", err, want)
 	}

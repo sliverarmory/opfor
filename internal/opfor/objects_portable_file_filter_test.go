@@ -3,11 +3,9 @@ package opfor
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"os"
-	osexec "os/exec"
 	"path/filepath"
 	"reflect"
 	"strconv"
@@ -355,25 +353,7 @@ $dir = [new File: %s];
 }
 
 func TestPortableJavaFileFilterOfficialJARDifferential(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for File filter differential verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	const officialSHA256 = "0ddde5e9e8d8d8d334d071b1f887c379f5d0be9b190566f05365997b3e375ff1"
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java, err = osexec.LookPath("java")
-		if err != nil {
-			t.Skipf("official JAR supplied but java is unavailable: %v", err)
-		}
-	}
+	jar, java := officialSleepDifferentialTools(t)
 
 	root := preparePortableJavaFileFilterFixture(t)
 	source := portableJavaFileFilterProbeSource(root)
@@ -386,7 +366,7 @@ func TestPortableJavaFileFilterOfficialJARDifferential(t *testing.T) {
 	if _, err := runtimeInstance.Eval(context.Background(), "file-filter-differential.sl", source); err != nil {
 		t.Fatalf("pure-Go File filter probe: %v\n%s", err, goOutput.String())
 	}
-	command := osexec.Command(java, "-Dfile.encoding=UTF-8", "-jar", jar, "-e", source)
+	command := officialSleepJavaCommand(java, "-Dfile.encoding=UTF-8", "-jar", jar, "-e", source)
 	javaOutput, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep File filter probe: %v\n%s", err, javaOutput)

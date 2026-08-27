@@ -244,7 +244,7 @@ func builtinSleepSplit(ctx context.Context, invocation Invocation) (Value, error
 		return Null(), err
 	}
 	patternValue = sleepStringCoercion(patternValue)
-	pattern, err := compileSleepRegexBridge(sleepCanonicalString(patternValue), false)
+	pattern, err := invocation.Runtime.compileSleepRegexBridge(sleepCanonicalString(patternValue), false)
 	if err != nil {
 		return Null(), err
 	}
@@ -301,7 +301,7 @@ func builtinSleepReplace(ctx context.Context, invocation Invocation) (Value, err
 	inputValue := sleepStringCoercion(invocation.Arg(0))
 	input := sleepCanonicalString(inputValue)
 	patternValue := sleepStringCoercion(invocation.Arg(1))
-	pattern, err := compileSleepRegexBridge(sleepCanonicalString(patternValue), false)
+	pattern, err := invocation.Runtime.compileSleepRegexBridge(sleepCanonicalString(patternValue), false)
 	if err != nil {
 		return Null(), err
 	}
@@ -324,7 +324,7 @@ func builtinSleepReplace(ctx context.Context, invocation Invocation) (Value, err
 	if limit > 0 {
 		matchLimit = int(limit)
 	}
-	matches, err := pattern.FindAllStringSubmatchIndexContext(ctx, input, matchLimit)
+	matches, err := pattern.FindAllStringSubmatchUTF16IndexContext(ctx, input, matchLimit)
 	if err != nil {
 		return Null(), fmt.Errorf("&%s: regular expression match: %w", builtinName(invocation.Name), err)
 	}
@@ -332,24 +332,16 @@ func builtinSleepReplace(ctx context.Context, invocation Invocation) (Value, err
 		return inputValue, nil
 	}
 
-	unitMap, err := newPortableJavaRegexUnitMap(ctx, input)
-	if err != nil {
-		return Null(), err
-	}
 	result := newPortableJavaStringBuilder(sleepStringLength(inputValue))
 	last := 0
 	for _, match := range matches {
-		unitMatch, mapErr := unitMap.match(match)
-		if mapErr != nil {
-			return Null(), mapErr
-		}
-		if err := result.appendRange(inputValue, last, unitMatch[0]); err != nil {
+		if err := result.appendRange(inputValue, last, match[0]); err != nil {
 			return Null(), err
 		}
-		if err := appendPortableJavaReplacement(ctx, result, pattern, replacement, inputValue, unitMatch); err != nil {
+		if err := appendPortableJavaReplacement(ctx, result, pattern, replacement, inputValue, match); err != nil {
 			return Null(), sleepRegexBridgeReplacementError(err)
 		}
-		last = unitMatch[1]
+		last = match[1]
 	}
 	if err := result.appendRange(inputValue, last, sleepStringLength(inputValue)); err != nil {
 		return Null(), err

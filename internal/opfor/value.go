@@ -880,11 +880,16 @@ func (a *Array) Len() int {
 	if a.backend != nil {
 		return a.backend.len()
 	}
-	cells, err := a.snapshotCells()
-	if err != nil {
-		return len(a.cachedCells())
+	storage, window := a.arrayStorage()
+	if storage == nil || window == nil {
+		return 0
 	}
-	return len(cells)
+	storage.mu.RLock()
+	defer storage.mu.RUnlock()
+	if !window.valid {
+		return len(window.cached)
+	}
+	return window.end - window.start
 }
 
 func normalizeArrayIndex(index, length int) (int, bool) {
@@ -910,15 +915,20 @@ func (a *Array) Cell(index int) (*Cell, bool) {
 	if a.backend != nil {
 		return a.backend.cell(index)
 	}
-	cells, err := a.snapshotCells()
-	if err != nil {
+	storage, window := a.arrayStorage()
+	if storage == nil || window == nil {
 		return nil, false
 	}
-	index, ok := normalizeArrayIndex(index, len(cells))
+	storage.mu.RLock()
+	defer storage.mu.RUnlock()
+	if !window.valid {
+		return nil, false
+	}
+	index, ok := normalizeArrayIndex(index, window.end-window.start)
 	if !ok {
 		return nil, false
 	}
-	return cells[index], true
+	return storage.items[window.start+index], true
 }
 
 // Get returns the value at index using Cell's negative-index behavior.
@@ -944,13 +954,26 @@ func (a *Array) Set(index int, value Value) error {
 		cell.Set(value)
 		return nil
 	}
-	if a.isReadOnly() {
-		return ErrReadOnlyArray
-	}
-	cell, ok := a.Cell(index)
-	if !ok {
+	storage, window := a.arrayStorage()
+	if storage == nil || window == nil {
 		return ErrIndexOutOfRange
 	}
+	storage.mu.RLock()
+	if storage.readOnly {
+		storage.mu.RUnlock()
+		return ErrReadOnlyArray
+	}
+	if !window.valid {
+		storage.mu.RUnlock()
+		return ErrIndexOutOfRange
+	}
+	index, ok := normalizeArrayIndex(index, window.end-window.start)
+	if !ok {
+		storage.mu.RUnlock()
+		return ErrIndexOutOfRange
+	}
+	cell := storage.items[window.start+index]
+	storage.mu.RUnlock()
 	cell.Set(value)
 	return nil
 }
@@ -991,12 +1014,57 @@ func (a *Array) appendValues(values ...Value) error {
 	if a == nil {
 		return ErrIndexOutOfRange
 	}
+	if a.backend != nil {
+		return ErrReadOnlyArray
+	}
+	if len(values) == 0 {
+		return nil
+	}
+	storage, window := a.arrayStorage()
+	if storage == nil || window == nil {
+		return ErrIndexOutOfRange
+	}
+	storage.mu.Lock()
+	if canAppendRootArrayLocked(storage, window) {
+		err := appendRootArrayValuesLocked(storage, values)
+		storage.mu.Unlock()
+		return err
+	}
+	storage.mu.Unlock()
 	return a.mutateCells(true, func(cells []*Cell) ([]*Cell, error) {
 		for _, value := range values {
 			cells = append(cells, NewCell(value))
 		}
 		return cells, nil
 	})
+}
+
+// canAppendRootArrayLocked reports whether an append can grow storage in
+// place. Once a sublist exists, appends must use mutateArrayCellsLocked so the
+// MyLinkedList-compatible view invalidation rules remain centralized there.
+// The caller must hold storage.mu.
+func canAppendRootArrayLocked(storage *arrayStorage, window *arrayWindow) bool {
+	return storage != nil && window != nil && window == storage.root &&
+		window.valid && len(storage.views) == 1
+}
+
+// appendRootArrayValuesLocked is the allocation-linear root-only append path.
+// Root cached cells can share the storage slice because the root is never
+// invalidated. A later general mutation refreshes and clears that cache through
+// syncCachesLocked, retaining the existing slice-retention guarantees.
+func appendRootArrayValuesLocked(storage *arrayStorage, values []Value) error {
+	if storage.readOnly {
+		return ErrReadOnlyArray
+	}
+	for _, value := range values {
+		storage.items = append(storage.items, NewCell(value))
+	}
+	storage.modCount++
+	storage.root.start = 0
+	storage.root.end = len(storage.items)
+	storage.root.valid = true
+	storage.root.cached = storage.items
+	return nil
 }
 
 // Values returns a detached value snapshot. For an invalidated sublist view,

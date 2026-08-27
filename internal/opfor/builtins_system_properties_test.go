@@ -3,11 +3,8 @@ package opfor
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"errors"
-	"fmt"
 	"os"
-	osexec "os/exec"
 	"path/filepath"
 	"reflect"
 	goruntime "runtime"
@@ -278,25 +275,7 @@ func TestSystemPropertiesWithFunctionOverride(t *testing.T) {
 // differ, so this oracle intentionally compares only hash shape,
 // missing/string value kinds, separators, and the initial working directory.
 func TestSystemPropertiesOfficialJARDifferential(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for differential verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	const officialSHA256 = "0ddde5e9e8d8d8d334d071b1f887c379f5d0be9b190566f05365997b3e375ff1"
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java, err = osexec.LookPath("java")
-		if err != nil {
-			t.Skipf("official JAR supplied but java is unavailable: %v", err)
-		}
-	}
+	jar, java := officialSleepDifferentialTools(t)
 
 	const source = `%properties = systemProperties("ignored");
 if (-ishash %properties) { println("hash"); } else { println("not-hash"); }
@@ -324,7 +303,7 @@ if ($seen == size(%properties)) { println("foreach-stable"); } else { println("f
 		t.Fatalf("pure-Go systemProperties probe: %v\n%s", err, goOutput.String())
 	}
 
-	command := osexec.Command(java, "-jar", jar, "-e", source)
+	command := officialSleepJavaCommand(java, "-jar", jar, "-e", source)
 	javaOutput, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep systemProperties probe: %v\n%s", err, javaOutput)

@@ -2,10 +2,6 @@ package opfor
 
 import (
 	"bytes"
-	"crypto/sha256"
-	"fmt"
-	"os"
-	osexec "os/exec"
 	"strings"
 	"testing"
 )
@@ -404,26 +400,9 @@ func TestSleepJavaRegexCaseFoldingEntryPoints(t *testing.T) {
 // ordinary test runs pure Go and prevents a different JAR from silently
 // defining the expected behavior.
 func TestSleepJavaRegexCaseFoldingOfficialJARDifferential(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for case-folding differential verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSleep21JARSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSleep21JARSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java, err = osexec.LookPath("java")
-		if err != nil {
-			t.Skipf("official JAR supplied but java is unavailable: %v", err)
-		}
-	}
+	jar, java := officialSleepDifferentialTools(t)
 
-	javaOutput, err := osexec.Command(java, "-jar", jar, "-e", sleepJavaRegexCaseProbeSource).CombinedOutput()
+	javaOutput, err := officialSleepJavaCommand(java, "-jar", jar, "-e", sleepJavaRegexCaseProbeSource).CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep regex case-folding probe: %v\n%s", err, javaOutput)
 	}

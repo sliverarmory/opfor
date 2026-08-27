@@ -3,12 +3,9 @@ package opfor
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"errors"
-	"fmt"
 	"io"
 	"os"
-	osexec "os/exec"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -441,25 +438,7 @@ func TestSleepSerializationCanonicalPhaseOneFixtures(t *testing.T) {
 }
 
 func TestOfficialSleepJavaConsumesOPFORPhaseOneStreams(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for Java-consumer verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	const officialSHA256 = "0ddde5e9e8d8d8d334d071b1f887c379f5d0be9b190566f05365997b3e375ff1"
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java, err = osexec.LookPath("java")
-		if err != nil {
-			t.Skipf("official JAR supplied but java is unavailable: %v", err)
-		}
-	}
+	jar, java := officialSleepDifferentialTools(t)
 
 	ordinary := NewHash()
 	ordinary.Set("a", String("apple"))
@@ -492,13 +471,14 @@ func TestOfficialSleepJavaConsumesOPFORPhaseOneStreams(t *testing.T) {
 		var stream bytes.Buffer
 		for _, root := range roots {
 			var encoded []byte
+			var encodeErr error
 			if raw {
-				encoded, err = encodeSleepRawStream(root)
+				encoded, encodeErr = encodeSleepRawStream(root)
 			} else {
-				encoded, err = encodeSleepScalarStream(root)
+				encoded, encodeErr = encodeSleepScalarStream(root)
 			}
-			if err != nil {
-				t.Fatal(err)
+			if encodeErr != nil {
+				t.Fatal(encodeErr)
 			}
 			stream.Write(encoded)
 		}
@@ -510,7 +490,7 @@ func TestOfficialSleepJavaConsumesOPFORPhaseOneStreams(t *testing.T) {
 	writeSerializedRoots(rawPath, rawRoots, true)
 
 	consumer := filepath.Join("testdata", "serialization", "consume_phase1.sl")
-	command := osexec.Command(java, "-jar", jar, consumer, scalarPath, rawPath)
+	command := officialSleepJavaCommand(java, "-jar", jar, consumer, scalarPath, rawPath)
 	output, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep consumer: %v\n%s", err, output)

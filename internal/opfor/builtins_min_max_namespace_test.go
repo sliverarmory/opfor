@@ -3,10 +3,7 @@ package opfor
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"fmt"
 	"os"
-	osexec "os/exec"
 	"path/filepath"
 	"slices"
 	"testing"
@@ -45,30 +42,13 @@ func TestSleepMinMaxRemainHostExtensions(t *testing.T) {
 }
 
 func TestSleepMinMaxNamespaceOfficialJARDifferential(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for min/max namespace verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSleep21JARSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSleep21JARSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java, err = osexec.LookPath("java")
-		if err != nil {
-			t.Skipf("official JAR supplied but java is unavailable: %v", err)
-		}
-	}
+	jar, java := officialSleepDifferentialTools(t)
 
 	path := filepath.Join(t.TempDir(), "min-max-namespace.sl")
 	if err := os.WriteFile(path, []byte(sleepMinMaxNamespaceProbe), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	want, err := osexec.Command(java, "-jar", jar, path).CombinedOutput()
+	want, err := officialSleepJavaCommand(java, "-jar", jar, path).CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep min/max namespace probe: %v\n%s", err, want)
 	}

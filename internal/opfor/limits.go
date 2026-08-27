@@ -173,12 +173,36 @@ func withExecutionMeter(ctx context.Context, runtime *Runtime) context.Context {
 }
 
 func consumeInstruction(ctx context.Context) error {
-	if account, _ := ctx.Value(runtimeResourceAccountKey{}).(*runtimeResourceAccount); account != nil {
-		if limitErr := account.outputLimitError(); limitErr != nil {
+	meter, _ := ctx.Value(executionMeterKey{}).(*executionMeter)
+	account, _ := ctx.Value(runtimeResourceAccountKey{}).(*runtimeResourceAccount)
+	if account == nil || account.output.limit == 0 {
+		account = nil
+	}
+	return consumeInstructionLimits(meter, account)
+}
+
+// vmExecutionLimits resolves execution-local accounting once before entering
+// the VM loop. Unlimited output accounts are returned as nil so the default
+// loop avoids an atomic output-latch load at every instruction.
+func vmExecutionLimits(ctx context.Context) (*executionMeter, *runtimeResourceAccount) {
+	meter, _ := ctx.Value(executionMeterKey{}).(*executionMeter)
+	account, _ := ctx.Value(runtimeResourceAccountKey{}).(*runtimeResourceAccount)
+	if account == nil || account.output.limit == 0 {
+		account = nil
+	}
+	return meter, account
+}
+
+func (runtime *Runtime) outputLimitEnabled() bool {
+	return runtime != nil && runtime.resources != nil && runtime.resources.output.limit != 0
+}
+
+func consumeInstructionLimits(meter *executionMeter, outputAccount *runtimeResourceAccount) error {
+	if outputAccount != nil {
+		if limitErr := outputAccount.outputLimitError(); limitErr != nil {
 			return limitErr
 		}
 	}
-	meter, _ := ctx.Value(executionMeterKey{}).(*executionMeter)
 	if meter == nil {
 		return nil
 	}

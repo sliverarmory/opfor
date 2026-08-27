@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -34,7 +33,7 @@ func TestSleepOpenFFailureOfficialJARDifferential(t *testing.T) {
 	jar, java := officialSleepDifferentialTools(t)
 	missing := filepath.Join(t.TempDir(), "missing", "child")
 	probe := sleepOpenFFailureProbe(missing)
-	want, err := exec.Command(java, "-jar", jar, "-e", probe).CombinedOutput()
+	want, err := officialSleepJavaCommand(java, "-jar", jar, "-e", probe).CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep openf failure probe: %v\n%s", err, want)
 	}
@@ -61,7 +60,7 @@ func TestSleepOpenFDirectoryOfficialJARDifferential(t *testing.T) {
 	jar, java := officialSleepDifferentialTools(t)
 	directory := t.TempDir()
 	probe := sleepOpenFDirectoryProbe(directory)
-	want, err := exec.Command(java, "-jar", jar, "-e", probe).CombinedOutput()
+	want, err := officialSleepJavaCommand(java, "-jar", jar, "-e", probe).CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep openf directory probe: %v\n%s", err, want)
 	}

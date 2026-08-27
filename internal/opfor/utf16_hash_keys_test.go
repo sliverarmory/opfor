@@ -3,10 +3,7 @@ package opfor
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"fmt"
 	"os"
-	osexec "os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -143,25 +140,8 @@ func TestSleepHashSerializationPreservesUTF16KeyIdentity(t *testing.T) {
 }
 
 func TestUTF16HashKeysOfficialJARDifferential(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for UTF-16 hash-key verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSleep21JARSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSleep21JARSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java, err = osexec.LookPath("java")
-		if err != nil {
-			t.Skipf("official JAR supplied but java is unavailable: %v", err)
-		}
-	}
-	want, err := osexec.Command(java, "-jar", jar, "-e", utf16HashKeyProbeSource).CombinedOutput()
+	jar, java := officialSleepDifferentialTools(t)
+	want, err := officialSleepJavaCommand(java, "-jar", jar, "-e", utf16HashKeyProbeSource).CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep UTF-16 hash-key probe: %v\n%s", err, want)
 	}
@@ -172,24 +152,7 @@ func TestUTF16HashKeysOfficialJARDifferential(t *testing.T) {
 }
 
 func TestOfficialSleepRoundTripsOPFORUTF16HashKeys(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for UTF-16 hash serialization verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSleep21JARSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSleep21JARSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java, err = osexec.LookPath("java")
-		if err != nil {
-			t.Skipf("official JAR supplied but java is unavailable: %v", err)
-		}
-	}
+	jar, java := officialSleepDifferentialTools(t)
 
 	hash := NewOrderedHash()
 	hash.SetValue(sleepUTF16CharacterValue(0xd83d), String("H"))
@@ -205,7 +168,7 @@ func TestOfficialSleepRoundTripsOPFORUTF16HashKeys(t *testing.T) {
 		t.Fatal(err)
 	}
 	consumer := filepath.Join("testdata", "serialization", "consume_utf16_hash_keys.sl")
-	probe, err := osexec.Command(java, "-jar", jar, consumer, input, output).CombinedOutput()
+	probe, err := officialSleepJavaCommand(java, "-jar", jar, consumer, input, output).CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep UTF-16 hash consumer: %v\n%s", err, probe)
 	}

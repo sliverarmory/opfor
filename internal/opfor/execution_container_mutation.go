@@ -56,6 +56,18 @@ func (a *Array) mutateCellsAtExecution(
 	structural bool,
 	mutate func([]*Cell) ([]*Cell, error),
 ) error {
+	return a.withMutationAtExecution(ctx, script, func(storage *arrayStorage, window *arrayWindow) error {
+		return mutateArrayCellsLocked(storage, window, structural, mutate)
+	})
+}
+
+// withMutationAtExecution linearizes a container operation with Script unload
+// while leaving the operation free to use a specialized locked implementation.
+func (a *Array) withMutationAtExecution(
+	ctx context.Context,
+	script *Script,
+	mutate func(*arrayStorage, *arrayWindow) error,
+) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -74,7 +86,7 @@ func (a *Array) mutateCellsAtExecution(
 	if script == nil {
 		err := executionMutationError(ctx, nil)
 		if err == nil {
-			err = mutateArrayCellsLocked(storage, window, structural, mutate)
+			err = mutate(storage, window)
 		}
 		storage.mu.Unlock()
 		return err
@@ -82,7 +94,7 @@ func (a *Array) mutateCellsAtExecution(
 	if script.mu.TryRLock() {
 		err := executionMutationError(ctx, script)
 		if err == nil {
-			err = mutateArrayCellsLocked(storage, window, structural, mutate)
+			err = mutate(storage, window)
 		}
 		script.mu.RUnlock()
 		storage.mu.Unlock()
@@ -94,7 +106,7 @@ func (a *Array) mutateCellsAtExecution(
 	storage.mu.Lock()
 	err := executionMutationError(ctx, script)
 	if err == nil {
-		err = mutateArrayCellsLocked(storage, window, structural, mutate)
+		err = mutate(storage, window)
 	}
 	storage.mu.Unlock()
 	script.mu.RUnlock()
@@ -174,14 +186,22 @@ func (a *Array) appendValuesAtExecution(ctx context.Context, invocation Invocati
 		return ErrIndexOutOfRange
 	}
 	script := executionMutationScript(ctx, invocation)
-	return a.mutateCellsAtExecution(ctx, script, true, func(cells []*Cell) ([]*Cell, error) {
+	return a.withMutationAtExecution(ctx, script, func(storage *arrayStorage, window *arrayWindow) error {
+		if len(values) == 0 {
+			return nil
+		}
 		if err := reserveCollectionEntriesAtExecution(ctx, script, len(values)); err != nil {
-			return nil, err
+			return err
 		}
-		for _, value := range values {
-			cells = append(cells, NewCell(value))
+		if canAppendRootArrayLocked(storage, window) {
+			return appendRootArrayValuesLocked(storage, values)
 		}
-		return cells, nil
+		return mutateArrayCellsLocked(storage, window, true, func(cells []*Cell) ([]*Cell, error) {
+			for _, value := range values {
+				cells = append(cells, NewCell(value))
+			}
+			return cells, nil
+		})
 	})
 }
 

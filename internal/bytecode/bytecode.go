@@ -158,4 +158,9 @@ type Function struct {
 	Instructions    []Instruction
 	BlockRecoveries []BlockRecovery
 	LoopRecoveries  []LoopRecovery
+	// ClosureTemplates holds the immutable executable body compiled for each
+	// anonymous closure literal referenced by this function. Evaluating the
+	// literal still creates a fresh SleepClosure and state; only compilation is
+	// shared.
+	ClosureTemplates map[*ast.ClosureExpr]*Function
 }

@@ -68,6 +68,21 @@ jobs:
       - name: Pure Go test
         run: go test ./... -count=1 -timeout=300s
 
+  benchmark-smoke:
+    name: Sleep benchmark smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Execute every Sleep benchmark workload once
+        run: go test ./internal/opfor -run='^$' -bench='^BenchmarkSleep' -benchtime=1x -count=1 -timeout=600s
+
   fuzz:
     name: Budgeted fuzz targets
     runs-on: ubuntu-latest
@@ -117,10 +132,44 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
         run: go build -trimpath -o opfor-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/opfor
 
+  official-sleep-differential:
+    name: Official Sleep 2.1 differential
+    if: github.event_name == 'workflow_dispatch' || (startsWith(github.ref, 'refs/tags/v') && contains(github.ref_name, '-alpha.'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+      TZ: UTC
+      OPFOR_REQUIRE_SLEEP_JAR: "1"
+      OPFOR_SLEEP_JAR: ${{ runner.temp }}/sleep.jar
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Set up pinned Java
+        uses: actions/setup-java@f2beeb24e141e01a676f977032f5a29d81c9e27e # v5.1.0
+        with:
+          distribution: temurin
+          java-version: 21.0.8+9
+      - name: Download authenticated official Sleep 2.1 JAR
+        shell: bash
+        run: |
+          curl --fail --location --proto '=https' --proto-redir '=https' --tlsv1.2 \
+            https://sleep.dashnine.org/download/sleep.jar \
+            --output "${OPFOR_SLEEP_JAR}"
+          echo "0ddde5e9e8d8d8d334d071b1f887c379f5d0be9b190566f05365997b3e375ff1  ${OPFOR_SLEEP_JAR}" | sha256sum --check --strict
+      - name: Run every official Sleep differential in strict mode
+        run: make test-sleep-java
+
   release-package:
     name: Package alpha release
     if: startsWith(github.ref, 'refs/tags/v') && contains(github.ref_name, '-alpha.')
-    needs: [test, race, pure-go, fuzz, cross-build]
+    needs: [test, race, pure-go, benchmark-smoke, fuzz, cross-build, official-sleep-differential]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

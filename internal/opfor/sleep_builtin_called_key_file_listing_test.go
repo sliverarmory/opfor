@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"os"
-	osexec "os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -47,7 +46,7 @@ func TestStockSleepFileListingCalledKeyOfficialJARDifferential(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	command := osexec.Command(java, "-jar", jar, path)
+	command := officialSleepJavaCommand(java, "-jar", jar, path)
 	command.Dir = directory
 	want, err := command.CombinedOutput()
 	if err != nil {

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"os"
-	osexec "os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -54,7 +53,7 @@ func TestSleepAssignmentWhileCollectionBindingOfficialJARDifferential(t *testing
 	if err := os.WriteFile(path, []byte(sleepAssignmentWhileCollectionProbe), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	want, err := osexec.Command(java, "-jar", jar, path).CombinedOutput()
+	want, err := officialSleepJavaCommand(java, "-jar", jar, path).CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep assignment-while probe: %v\n%s", err, want)
 	}

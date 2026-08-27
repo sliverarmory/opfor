@@ -4,13 +4,11 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
 	"net"
 	"os"
-	osexec "os/exec"
 	goruntime "runtime"
 	"strconv"
 	"strings"
@@ -19,8 +17,6 @@ import (
 	"testing"
 	"time"
 )
-
-const officialSleep21JARSHA256 = "0ddde5e9e8d8d8d334d071b1f887c379f5d0be9b190566f05365997b3e375ff1"
 
 func TestSleepJavaConnectErrorNormalizesWSAConnectionRefused(t *testing.T) {
 	err := &net.OpError{
@@ -905,29 +901,12 @@ func TestSleepBasicIOSocketImporterOverrideWins(t *testing.T) {
 // is supplied separately. Both sides only connect to a test-owned IPv4
 // loopback echo listener; ordinary CI remains pure Go and network-independent.
 func TestSleepBasicIOSocketOfficialJARDifferential(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for socket differential verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSleep21JARSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSleep21JARSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java, err = osexec.LookPath("java")
-		if err != nil {
-			t.Skipf("official JAR supplied but java is unavailable: %v", err)
-		}
-	}
+	jar, java := officialSleepDifferentialTools(t)
 
 	port := reserveSocketTestPort(t)
 	goOutput := runPureGoSocketProbe(t, port)
 	javaServer := startSocketProbeServer(t, port)
-	command := osexec.Command(java, "-jar", jar, "-e", sleepSocketProbeSource(port))
+	command := officialSleepJavaCommand(java, "-jar", jar, "-e", sleepSocketProbeSource(port))
 	javaOutput, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep socket probe: %v\n%s", err, javaOutput)
@@ -940,7 +919,7 @@ func TestSleepBasicIOSocketOfficialJARDifferential(t *testing.T) {
 	}
 
 	goErrorOutput := runPureGoSocketErrorProbe(t)
-	command = osexec.Command(java, "-jar", jar, "-e", sleepSocketErrorProbeSource)
+	command = officialSleepJavaCommand(java, "-jar", jar, "-e", sleepSocketErrorProbeSource)
 	javaErrorOutput, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep socket error-order probe: %v\n%s", err, javaErrorOutput)

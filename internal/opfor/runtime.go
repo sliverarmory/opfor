@@ -68,6 +68,7 @@ type runtimeConfig struct {
 	resources         *runtimeResourceAccount
 	includeCycles     IncludeCyclePolicy
 	clock             Clock
+	scriptLoaderCache *ScriptLoaderCache
 	extensionProfiles []runtimeExtensionProfile
 	aggressorConfig
 	debugFlags    int32
@@ -140,6 +141,8 @@ type Runtime struct {
 	socketState       *sleepSocketState
 	readTasks         map[*sleepReadTask]struct{}
 	processes         map[*processObject]struct{}
+	regexCache        *sleepRegexCache
+	scriptLoaderCache *ScriptLoaderCache
 	maxInstructions   uint64
 	limits            Limits
 	resources         *runtimeResourceAccount
@@ -234,11 +237,13 @@ func New(options ...Option) (*Runtime, error) {
 		resources:           resources,
 		includeCycles:       config.includeCycles,
 		clock:               config.clock,
+		scriptLoaderCache:   config.scriptLoaderCache,
 		extensionProfiles:   cloneRuntimeExtensionProfiles(config.extensionProfiles),
 		aggressorState:      newAggressorState(config.aggressorConfig),
 		debugFlags:          config.debugFlags,
 		taintMode:           config.taintMode,
 		taintPolicies:       make(map[string]TaintPolicy, len(config.taintPolicies)),
+		regexCache:          newSleepRegexCache(),
 	}
 	runtime.objectHost = defaultObjectHost{runtime: runtime, primary: config.objectHost}
 	runtime.executionCtx, runtime.executionCancel = context.WithCancel(context.Background())
@@ -272,6 +277,20 @@ func WithIncludeCyclePolicy(policy IncludeCyclePolicy) Option {
 		default:
 			return fmt.Errorf("opfor: invalid include cycle policy %d", policy)
 		}
+	}
+}
+
+// WithScriptLoaderCache enables the explicit sharing capability used when a
+// Sleep script calls ScriptLoader.setGlobalCache(true). The same cache may be
+// supplied to multiple runtimes; without this option, enabling the upstream
+// process-global cache remains an explicit unsupported operation.
+func WithScriptLoaderCache(cache *ScriptLoaderCache) Option {
+	return func(config *runtimeConfig) error {
+		if cache == nil {
+			return errors.New("opfor: ScriptLoader cache is nil")
+		}
+		config.scriptLoaderCache = cache
+		return nil
 	}
 }
 

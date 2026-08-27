@@ -3,13 +3,9 @@ package opfor
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"errors"
-	"fmt"
 	"os"
 	osexec "os/exec"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/sliverarmory/opfor/internal/javaser"
@@ -687,48 +683,43 @@ func dataObjectField(t *testing.T, object *javaser.Object, className, fieldName 
 	return result
 }
 
-func TestSleepClosureWriterRejectsUnsupportedContextShapesPrecisely(t *testing.T) {
-	for _, test := range []struct {
-		name   string
-		source string
-		value  string
-		want   string
-	}{
-		{
-			name: "foreach-body-tail",
-			source: `
+func TestSleepClosureWriterPreservesResumableForeachBodyTail(t *testing.T) {
+	runtime, err := New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	program, err := CompileString("foreach-body-tail-context.sl", `
 $closure = {
-   foreach $item (@("a", "b")) { yield $item; println("tail"); }
+   foreach $item (@("a", "b")) { yield $item; return "tail:" . $item; }
 };
 [$closure];
-`,
-			value: "$closure",
-			want:  "foreach Sleep closure context with resumable body tail",
-		},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			runtime, err := New()
-			if err != nil {
-				t.Fatal(err)
-			}
-			program, err := CompileString(test.name+"-context.sl", test.source)
-			if err != nil {
-				t.Fatal(err)
-			}
-			script, err := runtime.Load(context.Background(), program)
-			if err != nil {
-				t.Fatal(err)
-			}
-			t.Cleanup(func() { _ = runtime.Close(context.Background()) })
-			_, err = encodeSleepScalarStream(script.Get(test.value))
-			if err == nil {
-				t.Fatal("encode unexpectedly succeeded")
-			}
-			var unsupported *UnsupportedError
-			if !errors.As(err, &unsupported) || !strings.Contains(err.Error(), test.want) {
-				t.Fatalf("error = %T %v, want typed %q rejection", err, err, test.want)
-			}
-		})
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	script, err := runtime.Load(context.Background(), program)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = runtime.Close(context.Background()) })
+	encoded, err := encodeSleepScalarStream(script.Get("$closure"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, _, err := decodeSleepScalarStreamForScript(bytes.NewReader(encoded), script)
+	if err != nil {
+		t.Fatal(err)
+	}
+	callable, ok := decoded.Function()
+	if !ok {
+		t.Fatalf("decoded kind = %s, want function", decoded.Kind())
+	}
+	result, err := callable.Invoke(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := result.String(); got != "tail:a" {
+		t.Fatalf("resumed result = %q, want tail:a", got)
 	}
 }
 
@@ -848,25 +839,7 @@ func TestSleepClosureCanonicalFixtures(t *testing.T) {
 }
 
 func TestOfficialSleepJavaConsumesOPFORPhaseTwoClosures(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for Java-consumer verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	const officialSHA256 = "0ddde5e9e8d8d8d334d071b1f887c379f5d0be9b190566f05365997b3e375ff1"
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java, err = osexec.LookPath("java")
-		if err != nil {
-			t.Skipf("official JAR supplied but java is unavailable: %v", err)
-		}
-	}
+	jar, java := officialSleepDifferentialTools(t)
 
 	runtime, err := New()
 	if err != nil {
@@ -902,7 +875,7 @@ $callback = lambda({ return $captured . ':' . $1; }, $captured => 'seven');
 		t.Fatal(err)
 	}
 	consumer := filepath.Join("testdata", "serialization", "consume_phase2.sl")
-	command := osexec.Command(java, "-jar", jar, consumer, scalarPath, rawPath)
+	command := officialSleepJavaCommand(java, "-jar", jar, consumer, scalarPath, rawPath)
 	output, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep consumer: %v\n%s", err, output)
@@ -914,25 +887,7 @@ $callback = lambda({ return $captured . ':' . $1; }, $captured => 'seven');
 }
 
 func TestOfficialSleepPhaseThreeProducerAndConsumerExecution(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for phase-three Java interoperability")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	const officialSHA256 = "0ddde5e9e8d8d8d334d071b1f887c379f5d0be9b190566f05365997b3e375ff1"
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java, err = osexec.LookPath("java")
-		if err != nil {
-			t.Skipf("official JAR supplied but java is unavailable: %v", err)
-		}
-	}
+	jar, java := officialSleepDifferentialTools(t)
 
 	temporary := t.TempDir()
 	officialInlinePath := filepath.Join(temporary, "official-inline.ser")
@@ -1109,7 +1064,7 @@ phase3_source();
 	}
 	consumerArguments := []string{"-jar", jar, filepath.Join("testdata", "serialization", "consume_phase3.sl")}
 	consumerArguments = append(consumerArguments, goPaths...)
-	consumerCommand := osexec.Command(java, consumerArguments...)
+	consumerCommand := officialSleepJavaCommand(java, consumerArguments...)
 	consumerOutput, err := consumerCommand.CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep phase-three consumer: %v\n%s", err, consumerOutput)
@@ -1121,25 +1076,7 @@ phase3_source();
 }
 
 func TestOfficialSleepSuspendedForeachProducerAndConsumerFailure(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for foreach interoperability")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	const officialSHA256 = "0ddde5e9e8d8d8d334d071b1f887c379f5d0be9b190566f05365997b3e375ff1"
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java, err = osexec.LookPath("java")
-		if err != nil {
-			t.Skipf("official JAR supplied but java is unavailable: %v", err)
-		}
-	}
+	jar, java := officialSleepDifferentialTools(t)
 
 	temporary := t.TempDir()
 	officialPath := filepath.Join(temporary, "official-foreach.ser")

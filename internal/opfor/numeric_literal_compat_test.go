@@ -3,11 +3,8 @@ package opfor
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"errors"
-	"fmt"
 	"os"
-	osexec "os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -382,31 +379,14 @@ func TestSleepDigitTerminatingDotRemainsPartOfNumber(t *testing.T) {
 }
 
 func TestSleepNumericLiteralOfficialJARDifferential(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for numeric literal verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSleep21JARSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSleep21JARSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java, err = osexec.LookPath("java")
-		if err != nil {
-			t.Skipf("official JAR supplied but java is unavailable: %v", err)
-		}
-	}
+	jar, java := officialSleepDifferentialTools(t)
 
 	directory := t.TempDir()
 	path := filepath.Join(directory, sleepNumericLiteralProbeName)
 	if err := os.WriteFile(path, []byte(sleepNumericLiteralProbe), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	want, err := osexec.Command(java, "-jar", jar, path).CombinedOutput()
+	want, err := officialSleepJavaCommand(java, "-jar", jar, path).CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep numeric literal probe: %v\n%s", err, want)
 	}
@@ -418,7 +398,7 @@ func TestSleepNumericLiteralOfficialJARDifferential(t *testing.T) {
 	if err := os.WriteFile(predicatePath, []byte(sleepNumericPredicateContextProbe), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	predicateWant, err := osexec.Command(java, "-jar", jar, predicatePath).CombinedOutput()
+	predicateWant, err := officialSleepJavaCommand(java, "-jar", jar, predicatePath).CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep numeric predicate-context probe: %v\n%s", err, predicateWant)
 	}
@@ -430,7 +410,7 @@ func TestSleepNumericLiteralOfficialJARDifferential(t *testing.T) {
 	if err := os.WriteFile(constructorPath, []byte(sleepNumericSpecialConstructorProbe), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	constructorWant, err := osexec.Command(java, "-jar", jar, constructorPath).CombinedOutput()
+	constructorWant, err := officialSleepJavaCommand(java, "-jar", jar, constructorPath).CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep numeric special-constructor probe: %v\n%s", err, constructorWant)
 	}
@@ -484,7 +464,7 @@ func TestSleepNumericLiteralOfficialJARDifferential(t *testing.T) {
 		`if (!(-foo 1)) { println("yes"); }`, `$value = -foo 1;`, `println(!true);`,
 		`if (not true) { println("yes"); }`, `println(~1);`, `if (~1) { println("yes"); }`,
 	} {
-		output, runErr := osexec.Command(java, "-jar", jar, "-e", invalid).CombinedOutput()
+		output, runErr := officialSleepJavaCommand(java, "-jar", jar, "-e", invalid).CombinedOutput()
 		if runErr != nil {
 			t.Fatalf("official Sleep invalid numeric literal probe %q: %v\n%s", invalid, runErr, output)
 		}
@@ -515,7 +495,7 @@ func TestSleepNumericLiteralOfficialJARDifferential(t *testing.T) {
 		`println(NaN@(2));`,
 		`println(Infinity%("key" => 2));`,
 	} {
-		output, runErr := osexec.Command(java, "-jar", jar, "-e", accepted).CombinedOutput()
+		output, runErr := officialSleepJavaCommand(java, "-jar", jar, "-e", accepted).CombinedOutput()
 		if runErr != nil {
 			t.Fatalf("official Sleep accepted numeric-separation probe %q: %v\n%s", accepted, runErr, output)
 		}
@@ -528,7 +508,7 @@ func TestSleepNumericLiteralOfficialJARDifferential(t *testing.T) {
 	}
 
 	for _, warning := range []string{`println(42."x");`, `println(1."x");`} {
-		output, runErr := osexec.Command(java, "-jar", jar, "-e", warning).CombinedOutput()
+		output, runErr := officialSleepJavaCommand(java, "-jar", jar, "-e", warning).CombinedOutput()
 		if runErr != nil {
 			t.Fatalf("official Sleep digit-terminating dot probe %q: %v\n%s", warning, runErr, output)
 		}

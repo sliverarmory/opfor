@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	osexec "os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -77,7 +76,7 @@ func TestRegexPatternSyntaxOfficialJARDifferential(t *testing.T) {
 	if err := os.WriteFile(path, []byte(source), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	want, err := osexec.Command(java, "-jar", jar, path).CombinedOutput()
+	want, err := officialSleepJavaCommand(java, "-jar", jar, path).CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep PatternSyntaxException probe: %v\n%s", err, want)
 	}
@@ -148,7 +147,7 @@ println(iff("" ismatch "{2}", "leading-count", "bad"));
 	if err := os.WriteFile(path, []byte(source), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	want, err := osexec.Command(java, "-jar", jar, path).CombinedOutput()
+	want, err := officialSleepJavaCommand(java, "-jar", jar, path).CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep accepted-pattern probe: %v\n%s", err, want)
 	}

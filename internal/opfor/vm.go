@@ -13,25 +13,26 @@ import (
 )
 
 type fiber struct {
-	closure           *scriptClosure
-	function          *bytecode.Function
-	scope             *scope
-	locals            []*scope
-	caller            *fiber
-	inline            bool
-	flow              inlineFlow
-	inlineAt          map[*ast.CallExpr]*fiber
-	dynamicSource     *dynamicSourceExecution
-	continuation      *continuationCollector
-	continuationTail  []*fiber
-	continuedLoop     *bytecode.LoopRecovery
-	binaryDepth       int
-	yieldedInBinary   bool
-	swallowCallCC     bool
-	serializedForeach *sleepSerializedForeachResume
-	serializedReturn  bool
-	pc                int
-	last              Value
+	closure                *scriptClosure
+	function               *bytecode.Function
+	scope                  *scope
+	locals                 []*scope
+	caller                 *fiber
+	inline                 bool
+	flow                   inlineFlow
+	inlineAt               map[*ast.CallExpr]*fiber
+	dynamicSource          *dynamicSourceExecution
+	continuation           *continuationCollector
+	continuationTail       []*fiber
+	continuedLoop          *bytecode.LoopRecovery
+	binaryDepth            int
+	yieldedInBinary        bool
+	swallowCallCC          bool
+	serializedForeach      *sleepSerializedForeachResume
+	serializedMoreHandlers bool
+	serializedReturn       bool
+	pc                     int
+	last                   Value
 
 	iterators    []valueIterator
 	tries        []tryFrame
@@ -354,12 +355,29 @@ func (f *fiber) run(ctx context.Context) (Value, bool, error) {
 	}
 	defer func() { f.caller = previousCaller }()
 	ctx = withCurrentFiber(ctx, f)
+	meter, outputAccount := vmExecutionLimits(ctx)
+	if meter == nil && outputAccount == nil {
+		return f.runInstructionLoop(ctx, nil, nil)
+	}
+	return f.runInstructionLoop(ctx, meter, outputAccount)
+}
+
+// runInstructionLoop receives pre-resolved accounting state. In the ordinary
+// unlimited case both pointers are nil, so the loop retains cancellation and
+// unload cancellation checks without context lookups or atomic accounting on
+// every instruction.
+func (f *fiber) runInstructionLoop(ctx context.Context, meter *executionMeter, outputAccount *runtimeResourceAccount) (Value, bool, error) {
+	done := ctx.Done()
 	for f.pc >= 0 && f.pc < len(f.function.Instructions) {
 		f.resetContinuedLoop()
-		if err := ctx.Err(); err != nil {
-			return Null(), false, err
+		if done != nil {
+			select {
+			case <-done:
+				return Null(), false, ctx.Err()
+			default:
+			}
 		}
-		if err := consumeInstruction(ctx); err != nil {
+		if err := consumeInstructionLimits(meter, outputAccount); err != nil {
 			return Null(), false, &RuntimeError{Script: f.closure.script.id, Span: f.function.Instructions[f.pc].Span, Cause: err}
 		}
 		instruction := f.function.Instructions[f.pc]
@@ -369,11 +387,13 @@ func (f *fiber) run(ctx context.Context) (Value, bool, error) {
 		// yield, and finished return so a terminal control transfer cannot escape
 		// the same-execution fatal boundary without reaching another VM safe
 		// point.
-		if outputErr := f.closure.script.runtime.outputLimitError(); outputErr != nil {
-			return Null(), false, &RuntimeError{
-				Script: f.closure.script.id,
-				Span:   instruction.Span,
-				Cause:  errors.Join(outputErr, err),
+		if outputAccount != nil {
+			if outputErr := outputAccount.outputLimitError(); outputErr != nil {
+				return Null(), false, &RuntimeError{
+					Script: f.closure.script.id,
+					Span:   instruction.Span,
+					Cause:  errors.Join(outputErr, err),
+				}
 			}
 		}
 		if err != nil {
@@ -465,7 +485,7 @@ func (f *fiber) run(ctx context.Context) (Value, bool, error) {
 				continue
 			}
 			var thrown *scriptThrow
-			if errors.As(err, &thrown) && f.caller == nil {
+			if errors.As(err, &thrown) && f.caller == nil && !f.serializedMoreHandlers {
 				span := instruction.Span
 				var nested *RuntimeError
 				if errors.As(err, &nested) && nested.Span.Source != "" {
@@ -973,6 +993,10 @@ func (f *fiber) catch(err error) bool {
 	}
 	frame := f.tries[len(f.tries)-1]
 	f.tries = f.tries[:len(f.tries)-1]
+	// A deserialized Goto context may carry the handler responsible for its
+	// owning try Block. Once an earlier saved context propagates a throw here,
+	// the handler supersedes the metadata-omitted foreach resume.
+	f.serializedForeach = nil
 	if frame.depth < len(f.iterators) {
 		clear(f.iterators[frame.depth:])
 		f.iterators = f.iterators[:frame.depth]

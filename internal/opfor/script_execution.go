@@ -671,8 +671,10 @@ func scriptExecutionError(ctx context.Context) error {
 	token, _ := ctx.Value(scriptExecutionContextKey{}).(*scriptExecutionToken)
 	for token != nil {
 		if token.active.Load() && token.script != nil && token.script.executionCtx != nil {
-			if err := token.script.runtime.outputLimitError(); err != nil {
-				return err
+			if token.script.runtime.outputLimitEnabled() {
+				if err := token.script.runtime.outputLimitError(); err != nil {
+					return err
+				}
 			}
 			if err := token.script.executionCtx.Err(); err != nil {
 				return err
@@ -698,8 +700,10 @@ func runtimeExecutionError(ctx context.Context) error {
 	token, _ := ctx.Value(runtimeExecutionContextKey{}).(*runtimeExecutionToken)
 	for token != nil {
 		if token.active.Load() && token.runtime != nil && token.runtime.executionCtx != nil {
-			if err := token.runtime.outputLimitError(); err != nil {
-				return err
+			if token.runtime.outputLimitEnabled() {
+				if err := token.runtime.outputLimitError(); err != nil {
+					return err
+				}
 			}
 			if err := token.runtime.executionCtx.Err(); err != nil {
 				return err
@@ -719,6 +723,26 @@ func executionContextError(ctx context.Context) error {
 		return err
 	}
 	return runtimeExecutionError(ctx)
+}
+
+// canReuseClosureExecution reports whether a synchronous closure invocation is
+// already protected by a live execution lease for the same script. Requiring
+// the current fiber as well as an active token keeps public, cross-script, and
+// retained/asynchronous contexts on the ordinary counted acquisition path.
+func canReuseClosureExecution(ctx context.Context, script *Script) bool {
+	if ctx == nil || script == nil {
+		return false
+	}
+	caller := currentFiber(ctx)
+	if caller == nil || caller.closure == nil || caller.closure.script != script {
+		return false
+	}
+	for token, _ := ctx.Value(scriptExecutionContextKey{}).(*scriptExecutionToken); token != nil; token = token.parent {
+		if token.script == script && token.active.Load() {
+			return true
+		}
+	}
+	return false
 }
 
 // joinExecutionContextError gives a fatal execution condition precedence over

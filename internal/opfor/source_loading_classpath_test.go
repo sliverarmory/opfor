@@ -3,10 +3,7 @@ package opfor
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"fmt"
 	"os"
-	osexec "os/exec"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -68,24 +65,7 @@ func TestFileSourceResolverSleepClasspathSeparatorsPreserveVolumes(t *testing.T)
 // names. It is opt-in because the official BSD Sleep JAR is supplied outside
 // the repository.
 func TestFileSourceResolverSleepClasspathOfficialJARDifferential(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for include classpath verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSleep21JARSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSleep21JARSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java, err = osexec.LookPath("java")
-		if err != nil {
-			t.Skipf("official JAR supplied but java is unavailable: %v", err)
-		}
-	}
+	jar, java := officialSleepDifferentialTools(t)
 
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, " spaced source.sl "), []byte(`$spaced = 'kept';`), 0o600); err != nil {
@@ -105,7 +85,7 @@ func TestFileSourceResolverSleepClasspathOfficialJARDifferential(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	command := osexec.Command(java, "-Dsleep.classpath="+classPath, "-jar", jar, programPath)
+	command := officialSleepJavaCommand(java, "-Dsleep.classpath="+classPath, "-jar", jar, programPath)
 	command.Dir = root
 	want, err := command.CombinedOutput()
 	if err != nil {
@@ -130,24 +110,7 @@ func TestFileSourceResolverSleepClasspathOfficialJARDifferential(t *testing.T) {
 }
 
 func TestScriptLoaderFilenameDoesNotSearchSleepClasspathOfficialJARDifferential(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for ScriptLoader filename lookup verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSleep21JARSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSleep21JARSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java, err = osexec.LookPath("java")
-		if err != nil {
-			t.Skipf("official JAR supplied but java is unavailable: %v", err)
-		}
-	}
+	jar, java := officialSleepDifferentialTools(t)
 
 	root := t.TempDir()
 	classPath := filepath.Join(root, "programs")
@@ -168,7 +131,7 @@ println(checkError());
 	if err := os.WriteFile(programPath, []byte(source), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	command := osexec.Command(java, "-Dsleep.classpath=programs", "-jar", jar, filepath.Base(programPath))
+	command := officialSleepJavaCommand(java, "-Dsleep.classpath=programs", "-jar", jar, filepath.Base(programPath))
 	command.Dir = root
 	reference, err := command.CombinedOutput()
 	if err != nil {
@@ -199,24 +162,7 @@ println(checkError());
 // stack contract: exactly two arguments select container/member loading, while
 // every other positive arity uses argument zero and discards the extras.
 func TestIncludePositiveArityOfficialJARDifferential(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for include arity verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSleep21JARSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSleep21JARSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java, err = osexec.LookPath("java")
-		if err != nil {
-			t.Skipf("official JAR supplied but java is unavailable: %v", err)
-		}
-	}
+	jar, java := officialSleepDifferentialTools(t)
 
 	root := t.TempDir()
 	container := filepath.Join(root, "container")
@@ -234,7 +180,7 @@ func TestIncludePositiveArityOfficialJARDifferential(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	command := osexec.Command(java, "-jar", jar, filepath.Base(programPath))
+	command := officialSleepJavaCommand(java, "-jar", jar, filepath.Base(programPath))
 	command.Dir = root
 	want, err := command.CombinedOutput()
 	if err != nil {

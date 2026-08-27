@@ -109,6 +109,9 @@ func (script *Script) acquireGenerationExecution(
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	if canReuseClosureExecution(ctx, script) {
+		return script.acquireNestedGenerationExecution(ctx, expected)
+	}
 	if err := executionContextError(ctx); err != nil {
 		return ctx, nil, err
 	}
@@ -156,6 +159,67 @@ func (script *Script) acquireGenerationExecution(
 		stopScriptCancel()
 		cancel(errExecutionLeaseCancellation)
 		releaseCaller()
+		return script.releaseExecution(token)
+	}
+	return executionCtx, release, nil
+}
+
+// acquireNestedGenerationExecution admits an importer-facing callback made
+// synchronously by an already-running fiber. The outer script lease already
+// owns terminal-unload cancellation and caller-capture lifetime, so this path
+// needs only the distinct generation cancellation and counters. Public,
+// asynchronous, retained, and cross-script calls use the full path above.
+func (script *Script) acquireNestedGenerationExecution(
+	ctx context.Context,
+	expected *scriptGeneration,
+) (context.Context, func() error, error) {
+	if err := executionContextError(ctx); err != nil {
+		return ctx, nil, err
+	}
+	parent, _ := ctx.Value(scriptExecutionContextKey{}).(*scriptExecutionToken)
+	var caller context.Context
+	for token := parent; token != nil; token = token.parent {
+		if token.active.Load() && token.script == script {
+			caller = token.caller
+			break
+		}
+	}
+
+	script.mu.Lock()
+	if !script.generationAdmissibleLocked(expected) {
+		script.mu.Unlock()
+		return ctx, nil, ErrScriptUnloaded
+	}
+	if script.runtime != nil && script.runtime.outputLimitEnabled() {
+		if err := script.runtime.outputLimitError(); err != nil {
+			script.mu.Unlock()
+			return ctx, nil, err
+		}
+	}
+	script.executions++
+	expected.leases++
+	generationContext := expected.context
+	script.mu.Unlock()
+
+	executionCtx, cancel := context.WithCancelCause(ctx)
+	stopGenerationCancel := context.AfterFunc(generationContext, func() {
+		cancel(ErrScriptUnloaded)
+	})
+	token := &scriptExecutionToken{
+		script:          script,
+		caller:          caller,
+		parent:          parent,
+		generation:      expected,
+		generationLease: true,
+	}
+	token.active.Store(true)
+	executionCtx = context.WithValue(executionCtx, scriptExecutionContextKey{}, token)
+	release := func() error {
+		if !token.active.Swap(false) {
+			return nil
+		}
+		stopGenerationCancel()
+		cancel(errExecutionLeaseCancellation)
 		return script.releaseExecution(token)
 	}
 	return executionCtx, release, nil

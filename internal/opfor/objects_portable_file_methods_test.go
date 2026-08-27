@@ -3,11 +3,8 @@ package opfor
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"errors"
-	"fmt"
 	"os"
-	osexec "os/exec"
 	"path/filepath"
 	goruntime "runtime"
 	"strconv"
@@ -284,25 +281,7 @@ func TestPortableJavaFileMethodsOfficialJDKDifferential(t *testing.T) {
 	if goruntime.GOOS == "windows" {
 		t.Skip("Windows permission and symlink differential is covered by platform tests")
 	}
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for java.io.File method differential verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	const officialSHA256 = "0ddde5e9e8d8d8d334d071b1f887c379f5d0be9b190566f05365997b3e375ff1"
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java, err = osexec.LookPath("java")
-		if err != nil {
-			t.Skipf("official JAR supplied but java is unavailable: %v", err)
-		}
-	}
+	jar, java := officialSleepDifferentialTools(t)
 
 	goRoot, javaRoot := t.TempDir(), t.TempDir()
 	preparePortableJavaFileMethodProbe(t, goRoot)
@@ -315,7 +294,7 @@ func TestPortableJavaFileMethodsOfficialJDKDifferential(t *testing.T) {
 	if _, err := runtimeInstance.Eval(context.Background(), "portable-java-file-methods-probe.sl", portableJavaFileMethodProbeSource(goRoot)); err != nil {
 		t.Fatalf("pure-Go File method probe: %v\n%s", err, goOutput.String())
 	}
-	command := osexec.Command(java, "-jar", jar, "-e", portableJavaFileMethodProbeSource(javaRoot))
+	command := officialSleepJavaCommand(java, "-jar", jar, "-e", portableJavaFileMethodProbeSource(javaRoot))
 	javaOutput, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep File method probe: %v\n%s", err, javaOutput)

@@ -3,30 +3,13 @@ package opfor
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"fmt"
 	"os"
-	osexec "os/exec"
 	"path/filepath"
 	"testing"
 )
 
 func TestOfficialSleepPortableJavaStringBuilderDifferential(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for mutable-string differential verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSleep21JARSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSleep21JARSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java = "java"
-	}
+	jar, java := officialSleepDifferentialTools(t)
 
 	source := `$builder = [new StringBuilder: 2];
 println("new=" . [$builder length] . "/" . [$builder capacity] . "/" . [$builder toString]);
@@ -47,7 +30,7 @@ println("buffer=" . [$buffer length] . "/" . [$buffer capacity] . "/" . [$buffer
 	if err := os.WriteFile(mainPath, []byte(source), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	command := osexec.Command(java, "-Dfile.encoding=UTF-8", "-jar", jar, mainPath)
+	command := officialSleepJavaCommand(java, "-Dfile.encoding=UTF-8", "-jar", jar, mainPath)
 	reference, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep: %v\n%s", err, reference)

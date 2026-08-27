@@ -3,11 +3,9 @@ package opfor
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"os"
-	osexec "os/exec"
 	"path/filepath"
 	goruntime "runtime"
 	"strconv"
@@ -377,24 +375,7 @@ func portableJavaFileStaticProbeSource(root string) string {
 }
 
 func TestPortableJavaFileStaticOfficialJARDifferential(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for File static differential verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSleep21JARSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSleep21JARSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java, err = osexec.LookPath("java")
-		if err != nil {
-			t.Skipf("official JAR supplied but java is unavailable: %v", err)
-		}
-	}
+	jar, java := officialSleepDifferentialTools(t)
 
 	goRoot, javaRoot := t.TempDir(), t.TempDir()
 	var goOutput bytes.Buffer
@@ -406,7 +387,7 @@ func TestPortableJavaFileStaticOfficialJARDifferential(t *testing.T) {
 	if _, err := runtimeInstance.Eval(context.Background(), "file-static-differential.sl", portableJavaFileStaticProbeSource(goRoot)); err != nil {
 		t.Fatal(err)
 	}
-	command := osexec.Command(java, "-Dfile.encoding=UTF-8", "-jar", jar, "-e", portableJavaFileStaticProbeSource(javaRoot))
+	command := officialSleepJavaCommand(java, "-Dfile.encoding=UTF-8", "-jar", jar, "-e", portableJavaFileStaticProbeSource(javaRoot))
 	javaOutput, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep File static probe: %v\n%s", err, javaOutput)

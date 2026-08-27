@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"os"
-	osexec "os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -48,7 +47,7 @@ func TestSleepBasicStringsIsNumberUTF16OfficialJARDifferential(t *testing.T) {
 	if err := os.WriteFile(path, []byte(sleepBasicStringsIsNumberUTF16Probe), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	want, err := osexec.Command(java, "-Dfile.encoding=UTF-8", "-jar", jar, path).CombinedOutput()
+	want, err := officialSleepJavaCommand(java, "-Dfile.encoding=UTF-8", "-jar", jar, path).CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep BasicStrings -isnumber UTF-16 probe: %v\n%s", err, want)
 	}

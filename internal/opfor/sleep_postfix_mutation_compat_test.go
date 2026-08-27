@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"os"
-	osexec "os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -91,7 +90,7 @@ func TestSleepPostfixMutationOfficialJARDifferential(t *testing.T) {
 	if err := os.WriteFile(path, []byte(sleepPostfixMutationProbe), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	want, err := osexec.Command(java, "-jar", jar, path).CombinedOutput()
+	want, err := officialSleepJavaCommand(java, "-jar", jar, path).CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep postfix-mutation probe: %v\n%s", err, want)
 	}

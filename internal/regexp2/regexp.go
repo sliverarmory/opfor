@@ -221,6 +221,21 @@ func (re *Regexp) FindRunesMatchStartingAtContext(ctx context.Context, r []rune,
 	return re.runContext(ctx, false, startAt, r)
 }
 
+// FindRunesMatchStartingAtWithReverseFloorContext searches from startAt while
+// preventing right-to-left subexpressions, such as lookbehind, from consuming
+// before reverseFloor. Absolute beginning and end anchors still refer to the
+// complete input. This is used by adapters that expose a logical boundary
+// inside one host-language character.
+func (re *Regexp) FindRunesMatchStartingAtWithReverseFloorContext(ctx context.Context, r []rune, startAt, reverseFloor int) (*Match, error) {
+	if startAt < 0 || startAt > len(r) {
+		return nil, errors.New("startAt must be within the input")
+	}
+	if reverseFloor < 0 || reverseFloor > startAt {
+		return nil, errors.New("reverseFloor must be between the beginning and startAt")
+	}
+	return re.runWithBoundsContext(ctx, false, startAt, reverseFloor, 0, r)
+}
+
 // FindNextMatch returns the next match in the same input string as the match parameter.
 // Will return nil if there is no next match or if given a nil match.
 func (re *Regexp) FindNextMatch(m *Match) (*Match, error) {

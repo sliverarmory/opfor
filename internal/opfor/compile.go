@@ -59,10 +59,12 @@ func WithCompileEnvironment(keyword string, kind EnvironmentKind) CompileOption 
 // Program is immutable compiled Sleep/Aggressor code. A Program may be loaded
 // by multiple independent runtimes.
 type Program struct {
-	source      Source
-	tree        *ast.Script
-	function    *bytecode.Function
-	diagnostics []Diagnostic
+	source         Source
+	tree           *ast.Script
+	function       *bytecode.Function
+	diagnostics    []Diagnostic
+	numberLiterals map[*ast.NumberExpr]compiledNumberLiteral
+	stringLiterals map[*ast.StringExpr]compiledStringLiteral
 	// sourceAccount identifies the Runtime family which paid for this
 	// Program's source bytes during compilation. A standalone Program leaves
 	// it nil; loading that Program into a Runtime performs admission instead.
@@ -97,10 +99,59 @@ func Compile(source Source, options ...CompileOption) (*Program, error) {
 	if hasErrorDiagnostic(diagnostics) {
 		return nil, &CompileError{Diagnostics: diagnostics}
 	}
-	return &Program{
+	program := &Program{
 		source: source, tree: parsed.Script, function: compiled.Function,
 		diagnostics: append([]Diagnostic(nil), diagnostics...),
-	}, nil
+	}
+	program.numberLiterals, program.stringLiterals = compileProgramLiterals(parsed.Script)
+	return program, nil
+}
+
+type compiledNumberLiteral struct {
+	value Value
+	err   error
+}
+
+type compiledStringLiteral struct {
+	decoded decodedSleepLiteral
+	value   Value
+	static  bool
+	err     error
+}
+
+// compileProgramLiterals performs immutable parsing work once per Program.
+// Errors remain attached to their node and are surfaced at the same runtime
+// point as before, preserving Sleep's observable execution boundary.
+func compileProgramLiterals(tree *ast.Script) (map[*ast.NumberExpr]compiledNumberLiteral, map[*ast.StringExpr]compiledStringLiteral) {
+	numbers := make(map[*ast.NumberExpr]compiledNumberLiteral)
+	stringsByNode := make(map[*ast.StringExpr]compiledStringLiteral)
+	ast.Inspect(tree, func(node ast.Node) bool {
+		switch node := node.(type) {
+		case *ast.NumberExpr:
+			value, err := numberLiteral(node)
+			numbers[node] = compiledNumberLiteral{value: value, err: err}
+		case *ast.StringExpr:
+			template := compiledStringLiteral{}
+			if node.Kind == ast.SingleQuotedString {
+				template.value = String(decodeSleepSingleQuoted(node.Text))
+				template.static = true
+				stringsByNode[node] = template
+				break
+			}
+			template.decoded, template.err = decodeSleepEscapesAt(node.Text, node.TextRange)
+			if template.err == nil && node.Kind == ast.DoubleQuotedString && !strings.Contains(template.decoded.text, "$") {
+				template.value = sleepStringReplaceAll(
+					template.decoded.valueRange(0, len(template.decoded.text)),
+					String(escapedDollarSentinel),
+					String("$"),
+				)
+				template.static = true
+			}
+			stringsByNode[node] = template
+		}
+		return true
+	})
+	return numbers, stringsByNode
 }
 
 // CompileString is a convenience wrapper around Compile.

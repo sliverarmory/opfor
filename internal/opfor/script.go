@@ -981,6 +981,9 @@ func (r *Runtime) finishClose(
 	if executionDone != nil {
 		<-executionDone
 	}
+	if r.regexCache != nil {
+		r.regexCache.clear()
+	}
 
 	r.mu.Lock()
 	r.closeErr = result
@@ -2341,9 +2344,13 @@ func (c *scriptClosure) invokeArguments(ctx context.Context, arguments []Argumen
 	if c == nil || c.script == nil {
 		return Null(), ErrScriptUnloaded
 	}
-	ctx, release, err := c.script.acquireExecution(ctx)
-	if err != nil {
-		return Null(), err
+	var release func() error
+	var err error
+	if !canReuseClosureExecution(ctx, c.script) {
+		ctx, release, err = c.script.acquireExecution(ctx)
+		if err != nil {
+			return Null(), err
+		}
 	}
 	defer func() { resultErr = joinExecutionError(resultErr, release) }()
 	caller := currentFiber(ctx)
@@ -2369,9 +2376,13 @@ func (c *scriptClosure) invokeFresh(ctx context.Context, named []Argument, argum
 	if c == nil || c.script == nil {
 		return Null(), ErrScriptUnloaded
 	}
-	ctx, release, err := c.script.acquireExecution(ctx)
-	if err != nil {
-		return Null(), err
+	var release func() error
+	if !canReuseClosureExecution(ctx, c.script) {
+		var err error
+		ctx, release, err = c.script.acquireExecution(ctx)
+		if err != nil {
+			return Null(), err
+		}
 	}
 	defer func() { resultErr = joinExecutionError(resultErr, release) }()
 	bound := make([]Argument, 0, len(arguments)+len(named))
@@ -2446,6 +2457,13 @@ func (c *scriptClosure) runFiber(ctx context.Context, initial *fiber) (Value, bo
 		var err error
 		result, yielded, err = current.run(dynamicSourceResumeContext(ctx, current))
 		if err != nil {
+			if current.serializedMoreHandlers && index+1 < len(contexts) {
+				next := contexts[index+1]
+				if next != nil && next.catch(err) {
+					next.adoptContinuationState(current)
+					continue
+				}
+			}
 			var control *loopControl
 			if errors.As(err, &control) {
 				// ClosureCallRequest and top-level SleepUtils.runCode clear an

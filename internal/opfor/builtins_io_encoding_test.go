@@ -3,12 +3,9 @@ package opfor
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"fmt"
 	"io"
 	"net"
-	"os"
-	osexec "os/exec"
 	"reflect"
 	"strings"
 	"testing"
@@ -472,25 +469,7 @@ func TestSleepBasicIOEncodingExactOutput(t *testing.T) {
 // units, decoder read-ahead, binary interleaving, mark/reset, EOF closure,
 // invalid-name warnings, and closed-handle invalid-name behavior.
 func TestSleepBasicIOEncodingOfficialJARDifferential(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for encoding differential verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	const officialSHA256 = "0ddde5e9e8d8d8d334d071b1f887c379f5d0be9b190566f05365997b3e375ff1"
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java, err = osexec.LookPath("java")
-		if err != nil {
-			t.Skipf("official JAR supplied but java is unavailable: %v", err)
-		}
-	}
+	jar, java := officialSleepDifferentialTools(t)
 
 	for _, probe := range []struct {
 		name   string
@@ -503,7 +482,7 @@ func TestSleepBasicIOEncodingOfficialJARDifferential(t *testing.T) {
 	} {
 		t.Run(probe.name, func(t *testing.T) {
 			goOutput := runPureGoBasicIOEncodingProbe(t, probe.source, probe.stdin)
-			command := osexec.Command(java, "-jar", jar, "-e", probe.source)
+			command := officialSleepJavaCommand(java, "-jar", jar, "-e", probe.source)
 			command.Stdin = bytes.NewReader(probe.stdin)
 			javaOutput, err := command.CombinedOutput()
 			if err != nil {

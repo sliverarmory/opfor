@@ -3,12 +3,9 @@ package opfor
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"errors"
-	"fmt"
 	"io"
 	"os"
-	osexec "os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -243,32 +240,14 @@ func TestSleepBasicIOConsumeSkipExactOutput(t *testing.T) {
 // memory and file handles with the separately supplied, hash-pinned official
 // Sleep 2.1 JAR. The licensed JAR is never required by ordinary pure-Go CI.
 func TestSleepBasicIOConsumeSkipOfficialJARDifferential(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for BasicIO differential verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	const officialSHA256 = "0ddde5e9e8d8d8d334d071b1f887c379f5d0be9b190566f05365997b3e375ff1"
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java, err = osexec.LookPath("java")
-		if err != nil {
-			t.Skipf("official JAR supplied but java is unavailable: %v", err)
-		}
-	}
+	jar, java := officialSleepDifferentialTools(t)
 
 	path := filepath.Join(t.TempDir(), "input.bin")
 	if err := os.WriteFile(path, []byte("012345"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	goOutput := runPureGoBasicIOConsumeProbe(t, path)
-	command := osexec.Command(java, "-jar", jar, "-e", sleepBasicIOConsumeProbeSource(path))
+	command := officialSleepJavaCommand(java, "-jar", jar, "-e", sleepBasicIOConsumeProbeSource(path))
 	javaOutput, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep BasicIO probe: %v\n%s", err, javaOutput)

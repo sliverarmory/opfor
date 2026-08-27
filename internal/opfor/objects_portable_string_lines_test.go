@@ -3,11 +3,9 @@ package opfor
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"math"
-	"os"
 	osexec "os/exec"
 	"reflect"
 	"strings"
@@ -60,24 +58,7 @@ func TestPortableJavaStringLineAndEscapeMethodsExactOutput(t *testing.T) {
 }
 
 func TestPortableJavaStringLineAndEscapeMethodsOfficialJARDifferential(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for line/escape String differential verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSleep21JARSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSleep21JARSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java, err = osexec.LookPath("java")
-		if err != nil {
-			t.Skipf("official JAR supplied but java is unavailable: %v", err)
-		}
-	}
+	jar, java := officialSleepDifferentialTools(t)
 	want, err := osexec.Command(
 		java, "-Dfile.encoding=UTF-8", "-jar", jar, "-e", portableJavaStringLinesProbeSource,
 	).CombinedOutput()

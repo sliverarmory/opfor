@@ -1,11 +1,14 @@
 package opfor
 
 import (
+	"container/list"
 	"context"
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
+	"unicode/utf16"
 	"unicode/utf8"
 
 	"github.com/sliverarmory/opfor/internal/regexp2"
@@ -15,6 +18,86 @@ import (
 // itself has no timeout, but leaving attacker-controlled Aggressor patterns
 // unbounded would let one library call wedge the embedding Go process.
 const sleepRegexMatchTimeout = 2 * time.Second
+
+const sleepRegexCacheCapacity = 128
+
+type sleepRegexCacheKey struct {
+	pattern string
+	whole   bool
+}
+
+type sleepRegexCacheEntry struct {
+	key        sleepRegexCacheKey
+	expression *sleepRegex
+}
+
+// sleepRegexCache bounds translated/compiled Java-compatible patterns per
+// Runtime. Compiled regexp2 programs are immutable and their runner pool is
+// concurrency-safe, so entries may be shared by simultaneous executions.
+type sleepRegexCache struct {
+	mu      sync.Mutex
+	entries map[sleepRegexCacheKey]*list.Element
+	recent  list.List
+}
+
+func newSleepRegexCache() *sleepRegexCache {
+	return &sleepRegexCache{entries: make(map[sleepRegexCacheKey]*list.Element, sleepRegexCacheCapacity)}
+}
+
+func (cache *sleepRegexCache) get(key sleepRegexCacheKey) (*sleepRegex, bool) {
+	if cache == nil {
+		return nil, false
+	}
+	cache.mu.Lock()
+	defer cache.mu.Unlock()
+	element := cache.entries[key]
+	if element == nil {
+		return nil, false
+	}
+	cache.recent.MoveToFront(element)
+	entry := element.Value.(sleepRegexCacheEntry)
+	return entry.expression, true
+}
+
+func (cache *sleepRegexCache) put(key sleepRegexCacheKey, expression *sleepRegex) *sleepRegex {
+	if cache == nil || expression == nil {
+		return expression
+	}
+	cache.mu.Lock()
+	defer cache.mu.Unlock()
+	if element := cache.entries[key]; element != nil {
+		cache.recent.MoveToFront(element)
+		return element.Value.(sleepRegexCacheEntry).expression
+	}
+	element := cache.recent.PushFront(sleepRegexCacheEntry{key: key, expression: expression})
+	cache.entries[key] = element
+	if cache.recent.Len() > sleepRegexCacheCapacity {
+		oldest := cache.recent.Back()
+		entry := oldest.Value.(sleepRegexCacheEntry)
+		delete(cache.entries, entry.key)
+		cache.recent.Remove(oldest)
+	}
+	return expression
+}
+
+func (cache *sleepRegexCache) clear() {
+	if cache == nil {
+		return
+	}
+	cache.mu.Lock()
+	clear(cache.entries)
+	cache.recent.Init()
+	cache.mu.Unlock()
+}
+
+func (cache *sleepRegexCache) len() int {
+	if cache == nil {
+		return 0
+	}
+	cache.mu.Lock()
+	defer cache.mu.Unlock()
+	return cache.recent.Len()
+}
 
 // sleepRegex is the narrow adapter used by RegexBridge-compatible operations.
 // regexp2 supplies the backtracking constructs that Go's standard RE2 engine
@@ -64,6 +147,32 @@ func compileSleepRegexBridge(pattern string, whole bool) (*sleepRegex, error) {
 		return nil, err
 	}
 	return nil, sleepBridgeIllegalArgument(sleepJavaPatternSyntaxMessage(pattern, err))
+}
+
+func (runtime *Runtime) compileSleepRegexBridge(pattern string, whole bool) (*sleepRegex, error) {
+	expression, err := runtime.compileSleepRegexCached(pattern, whole)
+	if err == nil {
+		return expression, nil
+	}
+	if sleepRegexCompileFailureIsFatal(err) {
+		return nil, err
+	}
+	return nil, sleepBridgeIllegalArgument(sleepJavaPatternSyntaxMessage(pattern, err))
+}
+
+func (runtime *Runtime) compileSleepRegexCached(pattern string, whole bool) (*sleepRegex, error) {
+	if runtime == nil || runtime.regexCache == nil {
+		return compileSleepRegex(pattern, whole)
+	}
+	key := sleepRegexCacheKey{pattern: pattern, whole: whole}
+	if expression, ok := runtime.regexCache.get(key); ok {
+		return expression, nil
+	}
+	expression, err := compileSleepRegex(pattern, whole)
+	if err != nil {
+		return nil, err
+	}
+	return runtime.regexCache.put(key, expression), nil
 }
 
 func sleepRegexCompileFailureIsFatal(err error) bool {
@@ -297,6 +406,141 @@ func (r *sleepRegex) FindAllStringSubmatchIndexContext(ctx context.Context, inpu
 	return matches, nil
 }
 
+// FindAllStringSubmatchUTF16IndexContext returns Java String offsets and also
+// models Matcher.find's one-UTF-16-code-unit advance after an empty match.
+// regexp2 deliberately works in Unicode code points, so the ordinary byte
+// index API cannot represent the position between a supplementary character's
+// surrogate halves. Java can visit that position after a zero-width match.
+func (r *sleepRegex) FindAllStringSubmatchUTF16IndexContext(ctx context.Context, input string, limit int) ([][]int, error) {
+	if limit == 0 {
+		return nil, nil
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := executionContextError(ctx); err != nil {
+		return nil, err
+	}
+	text := newSleepRegexText(input)
+	normal, err := r.expression.FindRunesMatchContext(ctx, text.runes)
+	if err != nil {
+		return nil, err
+	}
+	boundaries := text.supplementaryBoundaries()
+	boundaryIndex := 0
+	nextUnit := 0
+	matches := make([][]int, 0)
+
+	for limit < 0 || len(matches) < limit {
+		if err := executionContextError(ctx); err != nil {
+			return nil, err
+		}
+		for boundaryIndex < len(boundaries) && boundaries[boundaryIndex].unitOffset < nextUnit {
+			boundaryIndex++
+		}
+
+		normalStart := int(^uint(0) >> 1)
+		var normalIndices []int
+		if normal != nil {
+			normalIndices = r.utf16Indices(text.utf16Offsets, normal)
+			normalStart = normalIndices[0]
+		}
+
+		var internal []int
+		for boundaryIndex < len(boundaries) && boundaries[boundaryIndex].unitOffset < normalStart {
+			if err := consumeInstruction(ctx); err != nil {
+				return nil, err
+			}
+			candidate := boundaries[boundaryIndex]
+			boundaryIndex++
+			internal, err = r.zeroWidthSupplementaryBoundaryMatch(ctx, text, candidate)
+			if err != nil {
+				return nil, err
+			}
+			if internal != nil {
+				break
+			}
+		}
+		if internal != nil {
+			matches = append(matches, internal)
+			nextUnit = internal[0] + 1
+			continue
+		}
+		if normal == nil {
+			break
+		}
+		if err := consumeInstruction(ctx); err != nil {
+			return nil, err
+		}
+		matches = append(matches, normalIndices)
+		if normalIndices[0] == normalIndices[1] {
+			nextUnit = normalIndices[0] + 1
+		} else {
+			nextUnit = normalIndices[1]
+		}
+		normal, err = r.expression.FindNextMatchContext(ctx, normal)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return matches, nil
+}
+
+type sleepRegexSupplementaryBoundary struct {
+	runeIndex  int
+	unitOffset int
+}
+
+func (r *sleepRegex) zeroWidthSupplementaryBoundaryMatch(
+	ctx context.Context,
+	text sleepRegexText,
+	boundary sleepRegexSupplementaryBoundary,
+) ([]int, error) {
+	character := text.runes[boundary.runeIndex]
+	high, low := utf16.EncodeRune(character)
+	probe := make([]rune, 0, len(text.runes)+1)
+	probe = append(probe, text.runes[:boundary.runeIndex]...)
+	probe = append(probe, high, low)
+	probe = append(probe, text.runes[boundary.runeIndex+1:]...)
+	start := boundary.runeIndex + 1
+	match, err := r.expression.FindRunesMatchStartingAtWithReverseFloorContext(ctx, probe, start, start)
+	if err != nil || match == nil || match.Index != start || match.Length != 0 {
+		return nil, err
+	}
+	offsets := make([]int, len(probe)+1)
+	units := 0
+	for index, current := range probe {
+		offsets[index] = units
+		units++
+		if current > 0xffff {
+			units++
+		}
+	}
+	offsets[len(probe)] = units
+	return r.utf16Indices(offsets, match), nil
+}
+
+func (r *sleepRegex) utf16Indices(offsets []int, match *regexp2.Match) []int {
+	indices := make([]int, (r.groups+1)*2)
+	for index := range indices {
+		indices[index] = -1
+	}
+	for groupNumber := 0; groupNumber <= r.groups; groupNumber++ {
+		group := match.GroupByNumber(groupNumber)
+		if group == nil || len(group.Captures) == 0 {
+			continue
+		}
+		start := group.Index
+		end := group.Index + group.Length
+		if start < 0 || end < start || end >= len(offsets) {
+			continue
+		}
+		indices[groupNumber*2] = offsets[start]
+		indices[groupNumber*2+1] = offsets[end]
+	}
+	return indices
+}
+
 func (r *sleepRegex) byteIndices(text sleepRegexText, match *regexp2.Match) []int {
 	indices := make([]int, (r.groups+1)*2)
 	for index := range indices {
@@ -324,28 +568,51 @@ func (r *sleepRegex) byteIndices(text sleepRegexText, match *regexp2.Match) []in
 // Keeping exact byte offsets lets callers continue slicing the canonical input
 // without exposing regexp2's rune indices.
 type sleepRegexText struct {
-	runes       []rune
-	byteOffsets []int
+	runes        []rune
+	byteOffsets  []int
+	utf16Offsets []int
 }
 
 func newSleepRegexText(value string) sleepRegexText {
 	text := sleepRegexText{
-		runes:       make([]rune, 0, utf8.RuneCountInString(value)),
-		byteOffsets: make([]int, 0, utf8.RuneCountInString(value)+1),
+		runes:        make([]rune, 0, utf8.RuneCountInString(value)),
+		byteOffsets:  make([]int, 0, utf8.RuneCountInString(value)+1),
+		utf16Offsets: make([]int, 0, utf8.RuneCountInString(value)+1),
 	}
+	units := 0
 	for index := 0; index < len(value); {
 		text.byteOffsets = append(text.byteOffsets, index)
+		text.utf16Offsets = append(text.utf16Offsets, units)
 		if unit, ok := sleepWTF8SurrogateAt(value, index); ok {
 			text.runes = append(text.runes, rune(unit))
+			units++
 			index += 3
 			continue
 		}
 		character, size := utf8.DecodeRuneInString(value[index:])
 		text.runes = append(text.runes, character)
+		units++
+		if character > 0xffff {
+			units++
+		}
 		index += size
 	}
 	text.byteOffsets = append(text.byteOffsets, len(value))
+	text.utf16Offsets = append(text.utf16Offsets, units)
 	return text
+}
+
+func (t sleepRegexText) supplementaryBoundaries() []sleepRegexSupplementaryBoundary {
+	boundaries := make([]sleepRegexSupplementaryBoundary, 0)
+	for index, character := range t.runes {
+		if character > 0xffff {
+			boundaries = append(boundaries, sleepRegexSupplementaryBoundary{
+				runeIndex:  index,
+				unitOffset: t.utf16Offsets[index] + 1,
+			})
+		}
+	}
+	return boundaries
 }
 
 func (t sleepRegexText) runeIndexAtByteOffset(byteOffset int) (int, bool) {
@@ -430,10 +697,12 @@ func (r *sleepRegex) splitContext(ctx context.Context, input string, limit int, 
 		}
 		return nil
 	}
-	matches, err := r.FindAllStringSubmatchIndexContext(ctx, input, -1)
+	matches, err := r.FindAllStringSubmatchUTF16IndexContext(ctx, input, -1)
 	if err != nil {
 		return nil, err
 	}
+	inputValue := sleepStringValueFromCanonical(input)
+	inputLength := sleepStringLength(inputValue)
 	pieces := make([]string, 0, len(matches)+1)
 	last := 0
 	used := false
@@ -445,7 +714,7 @@ func (r *sleepRegex) splitContext(ctx context.Context, input string, limit int, 
 		if !used && start == 0 && end == 0 {
 			continue
 		}
-		pieces = append(pieces, input[last:start])
+		pieces = append(pieces, sleepCanonicalString(sleepStringValueSlice(inputValue, last, start)))
 		last = end
 		used = true
 	}
@@ -456,7 +725,7 @@ func (r *sleepRegex) splitContext(ctx context.Context, input string, limit int, 
 		}
 		return pieces, nil
 	}
-	pieces = append(pieces, input[last:])
+	pieces = append(pieces, sleepCanonicalString(sleepStringValueSlice(inputValue, last, inputLength)))
 	if limit == 0 {
 		for len(pieces) > 0 && pieces[len(pieces)-1] == "" {
 			pieces = pieces[:len(pieces)-1]

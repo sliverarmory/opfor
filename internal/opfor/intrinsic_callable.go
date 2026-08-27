@@ -368,7 +368,7 @@ func (f *fiber) intrinsicMatches(ctx context.Context, arguments []Argument) (Val
 		return Null(), sleepBridgeEmptyStack()
 	}
 	values := resolvedArguments(arguments)
-	expression, err := compileSleepRegexBridge(sleepCanonicalString(values[1]), false)
+	expression, err := f.closure.script.runtime.compileSleepRegexBridge(sleepCanonicalString(values[1]), false)
 	if err != nil {
 		return Null(), err
 	}
@@ -411,7 +411,7 @@ func (f *fiber) intrinsicMatches(ctx context.Context, arguments []Argument) (Val
 		}
 	}
 	result := ArrayValue(NewArray(matches...))
-	if len(taintedValues(values[0], values[1])) != 0 {
+	if len(f.closure.script.runtime.taintedValues(values[0], values[1])) != 0 {
 		result = f.closure.script.runtime.TaintAll(result)
 	}
 	return result, nil
@@ -429,7 +429,7 @@ func (f *fiber) intrinsicFind(ctx context.Context, arguments []Argument) (Value,
 		values[index] = argument.Resolve()
 	}
 	text := sleepCanonicalString(values[0])
-	expression, err := compileSleepRegexBridge(sleepCanonicalString(values[1]), false)
+	expression, err := f.closure.script.runtime.compileSleepRegexBridge(sleepCanonicalString(values[1]), false)
 	if err != nil {
 		return Null(), err
 	}

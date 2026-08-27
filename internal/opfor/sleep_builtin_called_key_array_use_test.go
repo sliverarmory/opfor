@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"os"
-	osexec "os/exec"
 	"path/filepath"
 	"strconv"
 	"testing"
@@ -61,7 +60,7 @@ func TestStockSleepArrayAndUseCalledKeyOfficialJARDifferential(t *testing.T) {
 	if err := os.WriteFile(programPath, []byte(program), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	want, err := osexec.Command(java, "-jar", jar, programPath).CombinedOutput()
+	want, err := officialSleepJavaCommand(java, "-jar", jar, programPath).CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep array/use called-key probe: %v\n%s", err, want)
 	}

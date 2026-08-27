@@ -388,8 +388,16 @@ func sleepStackElements(stack *javaser.Object) ([]javaser.Element, error) {
 }
 
 type sleepDecodedContext struct {
-	block *javaser.Object
-	last  *javaser.Object
+	block        *javaser.Object
+	last         *javaser.Object
+	handler      *sleepDecodedExceptionContext
+	moreHandlers bool
+}
+
+type sleepDecodedExceptionContext struct {
+	owner   *javaser.Object
+	handler *javaser.Object
+	varname string
 }
 
 func (state *sleepSerializationDecoder) closureContexts(stack *javaser.Object, closure *scriptClosure, code *sleepLegacyDecodedBlock) ([]*fiber, error) {
@@ -465,12 +473,18 @@ func (state *sleepSerializationDecoder) closureToplevelContext(stack *javaser.Ob
 			context: saved,
 			graph:   graph,
 			fiber: &fiber{
-				closure:  closure,
-				function: graph.function,
-				scope:    active,
-				locals:   append([]*scope(nil), locals...),
-				pc:       resumePC,
+				closure:                closure,
+				function:               graph.function,
+				scope:                  active,
+				locals:                 append([]*scope(nil), locals...),
+				pc:                     resumePC,
+				serializedMoreHandlers: saved.moreHandlers,
 			},
+		}
+		if saved.handler != nil {
+			if err := state.installDecodedExceptionContext(resumes[index].fiber, graph, saved.handler); err != nil {
+				return nil, err
+			}
 		}
 		if decodedSleepSerializedReturn(resumes[index]) {
 			resumes[index].fiber.serializedReturn = true
@@ -482,9 +496,6 @@ func (state *sleepSerializationDecoder) closureToplevelContext(stack *javaser.Ob
 		if foreachFiber, consumed, matched, foreachErr := decodedSleepForeachResume(resumes[index:], closure, code, active, locals); matched || foreachErr != nil {
 			if foreachErr != nil {
 				return nil, foreachErr
-			}
-			if index+consumed < len(resumes) && decodedSleepInlineParent(&resumes[index+consumed], foreachFiber) {
-				return nil, &UnsupportedError{Operation: "serialization", Name: "foreach Sleep closure context nested with inline Context"}
 			}
 			roots = append(roots, foreachFiber)
 			index += consumed
@@ -520,6 +531,31 @@ func (state *sleepSerializationDecoder) closureToplevelContext(stack *javaser.Ob
 	head := roots[0]
 	head.continuationTail = append(head.continuationTail[:0], roots[1:]...)
 	return head, nil
+}
+
+func (state *sleepSerializationDecoder) installDecodedExceptionContext(fiber *fiber, owner *sleepLegacyDecodedBlock, saved *sleepDecodedExceptionContext) error {
+	if fiber == nil || owner == nil || owner.function == nil || saved == nil {
+		return errors.New("sleep serialization: invalid saved exception-handler context")
+	}
+	if saved.owner != owner.block {
+		return errors.New("sleep serialization: saved exception-handler owner does not share Context.block handle")
+	}
+	handler, err := state.legacyFunctionGraph(saved.handler)
+	if err != nil {
+		return err
+	}
+	instructions := append([]bytecode.Instruction(nil), owner.function.Instructions...)
+	handlerPC := len(instructions)
+	span := owner.function.Span
+	instructions = append(instructions, bytecode.Instruction{Op: bytecode.OpCatch, Span: span, Name: saved.varname})
+	instructions = appendRebasedLegacyInstructions(instructions, handler.function.Instructions, false)
+	fiber.function = &bytecode.Function{
+		Name:         owner.function.Name,
+		Span:         owner.function.Span,
+		Instructions: instructions,
+	}
+	fiber.tries = append(fiber.tries, tryFrame{handler: handlerPC, depth: len(fiber.iterators)})
+	return nil
 }
 
 type sleepDecodedResume struct {
@@ -558,10 +594,27 @@ func decodedSleepForeachResume(
 	if len(resumes) == 0 {
 		return nil, 0, false, nil
 	}
-	if len(resumes) < 2 {
-		if last := resumes[0].context.last; last != nil && last.Descriptor != nil && last.Descriptor.Name == sleepGotoDescriptor.Name {
-			return nil, 0, true, errors.New("sleep serialization: foreach Context has no saved body Block")
+	// A Goto context without its immediately preceding body context is the
+	// outer half of a nested foreach, an inline foreach suspension, or a body
+	// tail. Java restores these entries independently in FIFO order. Retain the
+	// omitted-iterator marker so execution reproduces the official warning pair.
+	if last := resumes[0].context.last; last != nil && last.Descriptor != nil && last.Descriptor.Name == sleepGotoDescriptor.Name {
+		loop := resumes[0].graph.foreachByGoto[last]
+		if loop == nil {
+			return nil, 0, true, &UnsupportedError{Operation: "serialization", Name: "unrecognized foreach Goto context"}
 		}
+		result := resumes[0].fiber
+		result.pc = loop.jumpPC
+		result.serializedForeach = &sleepSerializedForeachResume{
+			iterNextPC: loop.iterNextPC,
+			span:       loop.span,
+		}
+		if resumes[0].context.block != code.block {
+			result.dynamicSource = &dynamicSourceExecution{}
+		}
+		return result, 1, true, nil
+	}
+	if len(resumes) < 2 {
 		return nil, 0, false, nil
 	}
 	inner := resumes[0]
@@ -577,7 +630,10 @@ func decodedSleepForeachResume(
 		return nil, 0, true, errors.New("sleep serialization: foreach inner Context.block does not share Goto.iftrue handle")
 	}
 	if inner.context.last != nil {
-		return nil, 0, true, &UnsupportedError{Operation: "serialization", Name: "foreach Sleep closure context with resumable body tail"}
+		// The body must resume before the outer Goto is re-entered. Let the
+		// ordinary context decoder build that body/inline root; the next loop
+		// iteration will recognize the lone Goto context above.
+		return nil, 0, false, nil
 	}
 	result := &fiber{
 		closure:  closure,
@@ -586,8 +642,9 @@ func decodedSleepForeachResume(
 		locals:   append([]*scope(nil), locals...),
 		pc:       loop.jumpPC,
 		serializedForeach: &sleepSerializedForeachResume{
-			iterNextPC: loop.iterNextPC,
-			span:       loop.span,
+			iterNextPC:  loop.iterNextPC,
+			span:        loop.span,
+			includeBody: true,
 		},
 	}
 	if outer.context.block != code.block {
@@ -615,12 +672,44 @@ func decodeSleepContext(object *javaser.Object) (sleepDecodedContext, error) {
 	if err != nil {
 		return sleepDecodedContext{}, err
 	}
-	handler, ok := handlerValue.(javaser.Value)
+	handlerValueRef, ok := handlerValue.(javaser.Value)
 	if !ok {
 		return sleepDecodedContext{}, errors.New("sleep serialization: Context.handler is not an object reference")
 	}
-	if bool(more) || !javaSerializationNull(handler) {
-		return sleepDecodedContext{}, &UnsupportedError{Operation: "serialization", Name: "saved exception-handler Sleep closure context"}
+	var handler *sleepDecodedExceptionContext
+	if !javaSerializationNull(handlerValueRef) {
+		object, ok := handlerValueRef.(*javaser.Object)
+		if !ok {
+			return sleepDecodedContext{}, errors.New("sleep serialization: Context.handler is not an ExceptionContext object")
+		}
+		if err := validateSleepDescriptor(object.Descriptor, sleepExceptionContextDescriptor); err != nil {
+			return sleepDecodedContext{}, err
+		}
+		ownerValue, err := sleepObjectField(object, sleepExceptionContextDescriptor.Name, "owner")
+		if err != nil {
+			return sleepDecodedContext{}, err
+		}
+		owner, ok := ownerValue.(*javaser.Object)
+		if !ok {
+			return sleepDecodedContext{}, errors.New("sleep serialization: ExceptionContext.owner is not a Block")
+		}
+		handlerBlockValue, err := sleepObjectField(object, sleepExceptionContextDescriptor.Name, "handler")
+		if err != nil {
+			return sleepDecodedContext{}, err
+		}
+		handlerBlock, ok := handlerBlockValue.(*javaser.Object)
+		if !ok {
+			return sleepDecodedContext{}, errors.New("sleep serialization: ExceptionContext.handler is not a Block")
+		}
+		varnameValue, err := sleepObjectField(object, sleepExceptionContextDescriptor.Name, "varname")
+		if err != nil {
+			return sleepDecodedContext{}, err
+		}
+		varname, ok := varnameValue.(*javaser.String)
+		if !ok {
+			return sleepDecodedContext{}, errors.New("sleep serialization: ExceptionContext.varname is not a string")
+		}
+		handler = &sleepDecodedExceptionContext{owner: owner, handler: handlerBlock, varname: sleepStringFromJava(varname)}
 	}
 	blockValue, err := sleepObjectField(object, sleepContextDescriptor.Name, "block")
 	if err != nil {
@@ -641,7 +730,10 @@ func decodeSleepContext(object *javaser.Object) (sleepDecodedContext, error) {
 	if err != nil {
 		return sleepDecodedContext{}, err
 	}
-	return sleepDecodedContext{block: block, last: last}, nil
+	if handler != nil && handler.owner != block {
+		return sleepDecodedContext{}, errors.New("sleep serialization: ExceptionContext.owner does not share Context.block handle")
+	}
+	return sleepDecodedContext{block: block, last: last, handler: handler, moreHandlers: bool(more)}, nil
 }
 
 func (state *sleepSerializationDecoder) closureLocalLevels(list *javaser.Object, closure *scriptClosure) (*scope, []*scope, error) {
@@ -837,8 +929,9 @@ type sleepLegacyDecodedForeach struct {
 // iterator cursor, from its stream. The official runtime therefore cannot
 // resume this context and emits its null/EmptyStack warning pair instead.
 type sleepSerializedForeachResume struct {
-	iterNextPC int
-	span       Span
+	iterNextPC  int
+	span        Span
+	includeBody bool
 }
 
 func (state *sleepSerializationDecoder) legacyFunctionGraph(block *javaser.Object) (*sleepLegacyDecodedBlock, error) {
@@ -973,6 +1066,41 @@ func legacySpan(source string, line int) Span {
 	}
 }
 
+func appendRebasedLegacyInstructions(destination, source []bytecode.Instruction, omitEnd bool) []bytecode.Instruction {
+	limit := len(source)
+	if omitEnd && limit != 0 && source[limit-1].Op == bytecode.OpEnd {
+		limit--
+	}
+	offset := len(destination)
+	for index := 0; index < limit; index++ {
+		instruction := source[index]
+		switch instruction.Op {
+		case bytecode.OpJump, bytecode.OpJumpFalse, bytecode.OpIterNext, bytecode.OpEnterTry:
+			if instruction.Target >= 0 {
+				instruction.Target += offset
+			}
+		}
+		destination = append(destination, instruction)
+	}
+	return destination
+}
+
+func slicedLegacyInstructions(source []bytecode.Instruction, start, end int) []bytecode.Instruction {
+	if start < 0 || end < start || end > len(source) {
+		return nil
+	}
+	result := append([]bytecode.Instruction(nil), source[start:end]...)
+	for index := range result {
+		switch result[index].Op {
+		case bytecode.OpJump, bytecode.OpJumpFalse, bytecode.OpIterNext, bytecode.OpEnterTry:
+			if result[index].Target >= start && result[index].Target <= end {
+				result[index].Target -= start
+			}
+		}
+	}
+	return result
+}
+
 func (translator *sleepLegacyTranslator) step(object *javaser.Object) error {
 	if object == nil || object.Descriptor == nil {
 		return errors.New("sleep serialization: invalid closure Step")
@@ -1069,6 +1197,57 @@ func (translator *sleepLegacyTranslator) step(object *javaser.Object) error {
 			ExprBase: ast.ExprBase{Base: ast.Base{Range: span}},
 			Body:     body,
 		})
+		return nil
+	case sleepTryDescriptor.Name:
+		if err := validateSleepDescriptor(object.Descriptor, sleepTryDescriptor); err != nil {
+			return err
+		}
+		ownerValue, err := sleepObjectField(object, sleepTryDescriptor.Name, "owner")
+		if err != nil {
+			return err
+		}
+		owner, ok := ownerValue.(*javaser.Object)
+		if !ok {
+			return errors.New("sleep serialization: Try.owner is not a Block")
+		}
+		handlerValue, err := sleepObjectField(object, sleepTryDescriptor.Name, "handler")
+		if err != nil {
+			return err
+		}
+		handler, ok := handlerValue.(*javaser.Object)
+		if !ok {
+			return errors.New("sleep serialization: Try.handler is not a Block")
+		}
+		variable, err := sleepStepStringField(object, sleepTryDescriptor.Name, "var")
+		if err != nil {
+			return err
+		}
+		ownerGraph, err := translator.decoder.legacyFunctionGraph(owner)
+		if err != nil {
+			return err
+		}
+		handlerGraph, err := translator.decoder.legacyFunctionGraph(handler)
+		if err != nil {
+			return err
+		}
+		translator.flushRootAt(span)
+		enterPC := len(translator.instructions)
+		translator.instructions = append(translator.instructions, bytecode.Instruction{Op: bytecode.OpEnterTry, Span: span, Target: -1})
+		translator.instructions = appendRebasedLegacyInstructions(translator.instructions, ownerGraph.function.Instructions, true)
+		jumpPC := len(translator.instructions)
+		translator.instructions = append(translator.instructions, bytecode.Instruction{Op: bytecode.OpJump, Span: span, Target: -1})
+		catchPC := len(translator.instructions)
+		translator.instructions[enterPC].Target = catchPC
+		translator.instructions = append(translator.instructions, bytecode.Instruction{Op: bytecode.OpCatch, Span: span, Name: variable})
+		translator.instructions = appendRebasedLegacyInstructions(translator.instructions, handlerGraph.function.Instructions, true)
+		translator.instructions[jumpPC].Target = len(translator.instructions)
+		return nil
+	case sleepPopTryDescriptor.Name:
+		if err := validateSleepDescriptor(object.Descriptor, sleepPopTryDescriptor); err != nil {
+			return err
+		}
+		translator.flushRootAt(span)
+		translator.instructions = append(translator.instructions, bytecode.Instruction{Op: bytecode.OpLeaveTry, Span: span})
 		return nil
 	case sleepIterateDescriptor.Name:
 		return translator.iterate(object, span)
@@ -1459,12 +1638,7 @@ func (translator *sleepLegacyTranslator) foreachGoto(object *javaser.Object, spa
 		Name2:  loop.value,
 		Target: -1,
 	})
-	for _, instruction := range bodyGraph.function.Instructions {
-		if instruction.Op == bytecode.OpEnd {
-			continue
-		}
-		translator.instructions = append(translator.instructions, instruction)
-	}
+	translator.instructions = appendRebasedLegacyInstructions(translator.instructions, bodyGraph.function.Instructions, true)
 	loop.jumpPC = len(translator.instructions)
 	translator.instructions = append(translator.instructions, bytecode.Instruction{
 		Op:     bytecode.OpJump,
@@ -2071,9 +2245,11 @@ type sleepLegacyBlockBuilder struct {
 }
 
 type sleepLegacyEncodedBlock struct {
-	block   *javaser.Object
-	pcStep  map[int]*javaser.Object
-	foreach []*sleepLegacyEncodedForeach
+	block    *javaser.Object
+	function *bytecode.Function
+	pcStep   map[int]*javaser.Object
+	foreach  []*sleepLegacyEncodedForeach
+	tries    []*sleepLegacyEncodedTry
 }
 
 type sleepLegacyEncodedForeach struct {
@@ -2084,6 +2260,58 @@ type sleepLegacyEncodedForeach struct {
 	bodyStart  int
 	jumpPC     int
 	destroyPC  int
+}
+
+type sleepLegacyEncodedTry struct {
+	ownerGraph   *sleepLegacyEncodedBlock
+	handlerGraph *sleepLegacyEncodedBlock
+	tryStep      *javaser.Object
+	enterPC      int
+	bodyStart    int
+	leavePC      int
+	catchPC      int
+	handlerStart int
+	endPC        int
+	varname      string
+}
+
+type sleepCompiledTry struct {
+	bodyStart    int
+	leavePC      int
+	catchPC      int
+	handlerStart int
+	endPC        int
+	varname      string
+}
+
+func sleepCompiledTryRegion(function *bytecode.Function, enterPC int) (*sleepCompiledTry, error) {
+	if function == nil || enterPC < 0 || enterPC >= len(function.Instructions) || function.Instructions[enterPC].Op != bytecode.OpEnterTry {
+		return nil, errors.New("sleep serialization: invalid try EnterTry program counter")
+	}
+	catchPC := function.Instructions[enterPC].Target
+	if catchPC <= enterPC+1 || catchPC >= len(function.Instructions) || function.Instructions[catchPC].Op != bytecode.OpCatch {
+		return nil, &UnsupportedError{Operation: "serialization", Name: "try Sleep closure with invalid catch target"}
+	}
+	jumpPC := catchPC - 1
+	if function.Instructions[jumpPC].Op != bytecode.OpJump {
+		return nil, &UnsupportedError{Operation: "serialization", Name: "try Sleep closure without handler jump"}
+	}
+	endPC := function.Instructions[jumpPC].Target
+	if endPC < catchPC+1 || endPC > len(function.Instructions) {
+		return nil, &UnsupportedError{Operation: "serialization", Name: "try Sleep closure with invalid end target"}
+	}
+	leavePC := jumpPC - 1
+	if leavePC <= enterPC || function.Instructions[leavePC].Op != bytecode.OpLeaveTry {
+		return nil, &UnsupportedError{Operation: "serialization", Name: "try Sleep closure without LeaveTry"}
+	}
+	return &sleepCompiledTry{
+		bodyStart:    enterPC + 1,
+		leavePC:      leavePC,
+		catchPC:      catchPC,
+		handlerStart: catchPC + 1,
+		endPC:        endPC,
+		varname:      function.Instructions[catchPC].Name,
+	}, nil
 }
 
 type sleepCompiledForeach struct {
@@ -2117,12 +2345,6 @@ func sleepCompiledForeachRegion(function *bytecode.Function, iterInitPC int) (*s
 		return nil, &UnsupportedError{Operation: "serialization", Name: "foreach Sleep closure without terminal back-edge"}
 	}
 	bodyStart := iterNextPC + 1
-	for pc := bodyStart; pc < jumpPC; pc++ {
-		switch function.Instructions[pc].Op {
-		case bytecode.OpIterInit, bytecode.OpIterNext, bytecode.OpIterDestroy:
-			return nil, &UnsupportedError{Operation: "serialization", Name: "nested foreach Sleep closure graph"}
-		}
-	}
 	return &sleepCompiledForeach{
 		key:        next.Name,
 		value:      next.Name2,
@@ -2267,6 +2489,17 @@ func (state *sleepSerializationEncoder) closureToplevelStack(closure *scriptClos
 		if len(chain) == 0 {
 			return nil, errors.New("sleep serialization: suspended context has no resumable fiber")
 		}
+		if len(chain[0].tries) != 0 {
+			if len(chain) != 1 {
+				return nil, &UnsupportedError{Operation: "serialization", Name: "saved exception-handler context nested with inline Context"}
+			}
+			tryContexts, err := state.closureTryContexts(code, chain[0])
+			if err != nil {
+				return nil, err
+			}
+			contexts = append(contexts, tryContexts...)
+			continue
+		}
 		if chain[0].function != closure.function && chain[0].dynamicSource == nil && !chain[0].inline {
 			return nil, &UnsupportedError{Operation: "serialization", Name: "suspended Context block outside SleepClosure.code without dynamic-source identity"}
 		}
@@ -2283,7 +2516,39 @@ func (state *sleepSerializationEncoder) closureToplevelStack(closure *scriptClos
 				return nil, err
 			}
 		}
-		if current := chain[0]; len(current.iterators) == 1 || current.serializedForeach != nil {
+		if current := chain[0]; len(current.iterators) != 0 || current.serializedForeach != nil {
+			for index := len(chain) - 1; index >= 1; index-- {
+				child := chain[index]
+				childGraph := code
+				if child.function != closure.function {
+					childGraph, err = state.legacyBlockGraph(child.function)
+					if err != nil {
+						return nil, err
+					}
+				}
+				resumePC := child.pc
+				serializedInlineReturn := false
+				if index+1 < len(chain) {
+					if _, direct := directLegacyInlineCall(child.function, child.pc); direct {
+						resumePC++
+					} else if _, direct := directLegacyReturnInlineCall(child.function, child.pc); direct {
+						serializedInlineReturn = true
+					} else {
+						return nil, &UnsupportedError{Operation: "serialization", Name: "inline Context with non-direct owning call"}
+					}
+				}
+				var last javaser.Value = javaser.NullValue
+				if child.serializedReturn || serializedInlineReturn {
+					step, stepErr := sleepLegacyStepWithDescriptor(childGraph.block, sleepReturnDescriptor.Name)
+					if stepErr != nil {
+						return nil, stepErr
+					}
+					last = step
+				} else if step := childGraph.pcStep[resumePC]; step != nil {
+					last = step
+				}
+				contexts = append(contexts, sleepJavaContextWithHandler(childGraph.block, last, nil, child.serializedMoreHandlers))
+			}
 			foreachContexts, err := state.closureForeachContexts(graph, current)
 			if err != nil {
 				return nil, err
@@ -2324,7 +2589,7 @@ func (state *sleepSerializationEncoder) closureToplevelStack(closure *scriptClos
 			} else if step := currentGraph.pcStep[resumePC]; step != nil {
 				last = step
 			}
-			contexts = append(contexts, sleepJavaContext(currentGraph.block, last))
+			contexts = append(contexts, sleepJavaContextWithHandler(currentGraph.block, last, nil, current.serializedMoreHandlers))
 		}
 	}
 	levels, err := state.closureLocalLevelList(head)
@@ -2339,11 +2604,10 @@ func (state *sleepSerializationEncoder) closureForeachContexts(code *sleepLegacy
 	if code == nil || current == nil || current.function == nil {
 		return nil, errors.New("sleep serialization: invalid suspended foreach context")
 	}
-	if len(current.iterators) > 1 {
-		return nil, &UnsupportedError{Operation: "serialization", Name: "nested foreach Sleep closure context"}
-	}
 	var loop *sleepLegacyEncodedForeach
+	includeBody := true
 	if missing := current.serializedForeach; missing != nil {
+		includeBody = missing.includeBody
 		for _, candidate := range code.foreach {
 			if candidate.iterNextPC == missing.iterNextPC {
 				loop = candidate
@@ -2351,11 +2615,11 @@ func (state *sleepSerializationEncoder) closureForeachContexts(code *sleepLegacy
 			}
 		}
 	} else {
-		if current.pc <= 0 || current.pc >= len(current.function.Instructions) || current.function.Instructions[current.pc-1].Op != bytecode.OpYield {
+		if len(current.inlineAt) == 0 && (current.pc <= 0 || current.pc >= len(current.function.Instructions) || current.function.Instructions[current.pc-1].Op != bytecode.OpYield) {
 			return nil, &UnsupportedError{Operation: "serialization", Name: "foreach Sleep closure context not suspended by yield"}
 		}
 		for _, candidate := range code.foreach {
-			if current.pc > candidate.bodyStart && current.pc <= candidate.jumpPC {
+			if current.pc >= candidate.bodyStart && current.pc <= candidate.jumpPC {
 				loop = candidate
 				break
 			}
@@ -2364,15 +2628,176 @@ func (state *sleepSerializationEncoder) closureForeachContexts(code *sleepLegacy
 	if loop == nil {
 		return nil, &UnsupportedError{Operation: "serialization", Name: "foreach Sleep closure context does not match a compiled loop"}
 	}
-	if current.pc != loop.jumpPC {
-		return nil, &UnsupportedError{Operation: "serialization", Name: "foreach Sleep closure context with resumable body tail"}
+	if len(current.iterators) > 1 {
+		bodyPC := current.pc - loop.bodyStart
+		child := *current
+		child.function = loop.bodyGraph.function
+		child.pc = bodyPC
+		child.iterators = append([]valueIterator(nil), current.iterators[1:]...)
+		child.serializedForeach = nil
+		contexts, err := state.closureForeachContexts(loop.bodyGraph, &child)
+		if err != nil {
+			return nil, err
+		}
+		return append(contexts, sleepJavaContext(code.block, loop.gotoStep)), nil
+	}
+	contexts := make([]javaser.Value, 0, 2)
+	if includeBody {
+		var last javaser.Value = javaser.NullValue
+		if current.serializedForeach == nil && current.pc != loop.jumpPC {
+			bodyPC := current.pc - loop.bodyStart
+			if bodyPC < 0 || bodyPC >= len(loop.bodyGraph.function.Instructions) {
+				return nil, errors.New("sleep serialization: foreach body resume program counter is outside its Block")
+			}
+			if step := loop.bodyGraph.pcStep[bodyPC]; step != nil {
+				last = step
+			}
+		}
+		contexts = append(contexts, sleepJavaContext(loop.bodyGraph.block, last))
+	}
+	contexts = append(contexts, sleepJavaContext(code.block, loop.gotoStep))
+	return contexts, nil
+}
+
+func (state *sleepSerializationEncoder) closureTryContexts(code *sleepLegacyEncodedBlock, current *fiber) ([]javaser.Value, error) {
+	if code == nil || current == nil || current.function == nil || len(current.tries) == 0 {
+		return nil, errors.New("sleep serialization: invalid saved exception-handler context")
+	}
+	if len(current.tries) > 1 {
+		return state.closureNestedTryContexts(code, current)
+	}
+	frame := current.tries[0]
+	for _, region := range code.tries {
+		if region.catchPC != frame.handler || current.pc < region.bodyStart || current.pc > region.leavePC {
+			continue
+		}
+		bodyPC := current.pc - region.bodyStart
+		if len(current.iterators) != 0 {
+			child := *current
+			child.function = region.ownerGraph.function
+			child.pc = bodyPC
+			child.tries = nil
+			foreachContexts, err := state.closureForeachContexts(region.ownerGraph, &child)
+			if err != nil {
+				return nil, err
+			}
+			handler := sleepJavaExceptionContext(region.ownerGraph.block, region.handlerGraph.block, region.varname)
+			for index, value := range foreachContexts {
+				object, ok := value.(*javaser.Object)
+				if !ok {
+					return nil, errors.New("sleep serialization: foreach try Context is not an object")
+				}
+				if index+1 < len(foreachContexts) {
+					setSleepObjectField(object, sleepContextDescriptor.Name, "moreHandlers", javaser.Boolean(true))
+				} else {
+					setSleepObjectField(object, sleepContextDescriptor.Name, "handler", handler)
+				}
+			}
+			var outerLast javaser.Value = javaser.NullValue
+			if step := code.pcStep[region.endPC]; step != nil {
+				outerLast = step
+			}
+			return append(foreachContexts, sleepJavaContext(code.block, outerLast)), nil
+		}
+		var bodyLast javaser.Value = javaser.NullValue
+		if step := region.ownerGraph.pcStep[bodyPC]; step != nil {
+			bodyLast = step
+		}
+		handler := sleepJavaExceptionContext(region.ownerGraph.block, region.handlerGraph.block, region.varname)
+		contexts := []javaser.Value{sleepJavaContextWithHandler(region.ownerGraph.block, bodyLast, handler, false)}
+		var outerLast javaser.Value = javaser.NullValue
+		if step := code.pcStep[region.endPC]; step != nil {
+			outerLast = step
+		}
+		return append(contexts, sleepJavaContext(code.block, outerLast)), nil
 	}
 
-	contexts := []javaser.Value{
-		sleepJavaContext(loop.bodyGraph.block, javaser.NullValue),
-		sleepJavaContext(code.block, loop.gotoStep),
+	// Java-produced saved handlers are reconstructed as an owner function
+	// followed by an unreachable Catch entry. Split that durable representation
+	// back into the two official Blocks without flattening the handler.
+	if frame.handler <= 0 || frame.handler >= len(current.function.Instructions) || current.function.Instructions[frame.handler].Op != bytecode.OpCatch {
+		return nil, &UnsupportedError{Operation: "serialization", Name: "saved exception-handler Sleep closure context with invalid catch target"}
 	}
-	return contexts, nil
+	ownerFunction := &bytecode.Function{
+		Name:         current.function.Name + "<saved-try-owner>",
+		Span:         current.function.Span,
+		Instructions: append([]bytecode.Instruction(nil), current.function.Instructions[:frame.handler]...),
+	}
+	if len(ownerFunction.Instructions) == 0 || ownerFunction.Instructions[len(ownerFunction.Instructions)-1].Op != bytecode.OpEnd {
+		ownerFunction.Instructions = append(ownerFunction.Instructions, bytecode.Instruction{Op: bytecode.OpEnd, Span: current.function.Span})
+	}
+	handlerFunction := &bytecode.Function{
+		Name:         current.function.Name + "<saved-try-handler>",
+		Span:         current.function.Span,
+		Instructions: slicedLegacyInstructions(current.function.Instructions, frame.handler+1, len(current.function.Instructions)),
+	}
+	if len(handlerFunction.Instructions) == 0 || handlerFunction.Instructions[len(handlerFunction.Instructions)-1].Op != bytecode.OpEnd {
+		handlerFunction.Instructions = append(handlerFunction.Instructions, bytecode.Instruction{Op: bytecode.OpEnd, Span: current.function.Span})
+	}
+	ownerGraph, err := state.legacyBlockGraph(ownerFunction)
+	if err != nil {
+		return nil, err
+	}
+	handlerGraph, err := state.legacyBlockGraph(handlerFunction)
+	if err != nil {
+		return nil, err
+	}
+	var last javaser.Value = javaser.NullValue
+	if step := ownerGraph.pcStep[current.pc]; step != nil {
+		last = step
+	}
+	variable := current.function.Instructions[frame.handler].Name
+	handler := sleepJavaExceptionContext(ownerGraph.block, handlerGraph.block, variable)
+	return []javaser.Value{sleepJavaContextWithHandler(ownerGraph.block, last, handler, current.serializedMoreHandlers)}, nil
+}
+
+func (state *sleepSerializationEncoder) closureNestedTryContexts(code *sleepLegacyEncodedBlock, current *fiber) ([]javaser.Value, error) {
+	type activeTry struct {
+		graph    *sleepLegacyEncodedBlock
+		region   *sleepLegacyEncodedTry
+		resumePC int
+	}
+	path := make([]activeTry, 0, len(current.tries))
+	graph := code
+	resumePC := current.pc
+	baseOffset := 0
+	for _, frame := range current.tries {
+		localHandler := frame.handler - baseOffset
+		var region *sleepLegacyEncodedTry
+		for _, candidate := range graph.tries {
+			if candidate.catchPC == localHandler && resumePC >= candidate.bodyStart && resumePC <= candidate.leavePC {
+				region = candidate
+				break
+			}
+		}
+		if region == nil {
+			return nil, &UnsupportedError{Operation: "serialization", Name: "nested saved exception-handler context does not match compiled try regions"}
+		}
+		path = append(path, activeTry{graph: graph, region: region, resumePC: resumePC})
+		resumePC -= region.bodyStart
+		baseOffset += region.bodyStart
+		graph = region.ownerGraph
+	}
+	contexts := make([]javaser.Value, 0, len(path)+1)
+	for index := len(path) - 1; index >= 0; index-- {
+		active := path[index]
+		bodyPC := active.resumePC - active.region.bodyStart
+		if index+1 < len(path) {
+			bodyPC = path[index+1].region.endPC
+		}
+		var last javaser.Value = javaser.NullValue
+		if step := active.region.ownerGraph.pcStep[bodyPC]; step != nil {
+			last = step
+		}
+		handler := sleepJavaExceptionContext(active.region.ownerGraph.block, active.region.handlerGraph.block, active.region.varname)
+		contexts = append(contexts, sleepJavaContextWithHandler(active.region.ownerGraph.block, last, handler, index > 0))
+	}
+	outer := path[0]
+	var last javaser.Value = javaser.NullValue
+	if step := code.pcStep[outer.region.endPC]; step != nil {
+		last = step
+	}
+	return append(contexts, sleepJavaContext(code.block, last)), nil
 }
 
 func sleepSuspendedFiberChain(closure *scriptClosure, outer *fiber) ([]*fiber, error) {
@@ -2390,17 +2815,11 @@ func sleepSuspendedFiberChain(closure *scriptClosure, outer *fiber) ([]*fiber, e
 		if current.closure != closure || current.function == nil || current.scope == nil {
 			return nil, errors.New("sleep serialization: suspended fiber has invalid closure ownership")
 		}
-		if len(current.iterators) > 1 {
-			return nil, &UnsupportedError{Operation: "serialization", Name: "nested foreach Sleep closure context"}
-		}
 		if current.serializedForeach != nil && len(current.iterators) != 0 {
 			return nil, errors.New("sleep serialization: foreach context has both live and omitted iterator state")
 		}
 		if len(current.iterators) == 1 || current.serializedForeach != nil {
 			hasForeach = true
-		}
-		if len(current.tries) != 0 {
-			return nil, &UnsupportedError{Operation: "serialization", Name: "saved exception-handler Sleep closure context"}
 		}
 		if current.yieldedInBinary {
 			return nil, &UnsupportedError{Operation: "serialization", Name: "inline binary-expression Sleep closure context"}
@@ -2425,9 +2844,7 @@ func sleepSuspendedFiberChain(closure *scriptClosure, outer *fiber) ([]*fiber, e
 		}
 		current = child
 	}
-	if hasForeach && len(chain) != 1 {
-		return nil, &UnsupportedError{Operation: "serialization", Name: "foreach Sleep closure context nested with inline Context"}
-	}
+	_ = hasForeach
 	return chain, nil
 }
 
@@ -2444,15 +2861,37 @@ func sameSleepLocalStack(left, right []*scope) bool {
 }
 
 func sleepJavaContext(block *javaser.Object, last javaser.Value) *javaser.Object {
+	return sleepJavaContextWithHandler(block, last, nil, false)
+}
+
+func sleepJavaContextWithHandler(block *javaser.Object, last javaser.Value, handler *javaser.Object, moreHandlers bool) *javaser.Object {
+	handlerValue := javaser.Element(javaser.NullValue)
+	if handler != nil {
+		handlerValue = handler
+	}
 	return &javaser.Object{
 		Descriptor: sleepContextDescriptor,
 		Data: []javaser.ClassData{{
 			Descriptor: sleepContextDescriptor,
 			Fields: []javaser.FieldValue{
-				{Field: sleepContextDescriptor.Fields[0], Value: javaser.Boolean(false)},
+				{Field: sleepContextDescriptor.Fields[0], Value: javaser.Boolean(moreHandlers)},
 				{Field: sleepContextDescriptor.Fields[1], Value: block},
-				{Field: sleepContextDescriptor.Fields[2], Value: javaser.NullValue},
+				{Field: sleepContextDescriptor.Fields[2], Value: handlerValue},
 				{Field: sleepContextDescriptor.Fields[3], Value: last},
+			},
+		}},
+	}
+}
+
+func sleepJavaExceptionContext(owner, handler *javaser.Object, varname string) *javaser.Object {
+	return &javaser.Object{
+		Descriptor: sleepExceptionContextDescriptor,
+		Data: []javaser.ClassData{{
+			Descriptor: sleepExceptionContextDescriptor,
+			Fields: []javaser.FieldValue{
+				{Field: sleepExceptionContextDescriptor.Fields[0], Value: handler},
+				{Field: sleepExceptionContextDescriptor.Fields[1], Value: owner},
+				{Field: sleepExceptionContextDescriptor.Fields[2], Value: sleepJavaString(varname)},
 			},
 		}},
 	}
@@ -2659,6 +3098,7 @@ func (state *sleepSerializationEncoder) legacyBlockGraph(function *bytecode.Func
 	builder := &sleepLegacyBlockBuilder{encoder: state, source: source}
 	pcStep := make(map[int]*javaser.Object, len(function.Instructions))
 	foreach := make([]*sleepLegacyEncodedForeach, 0, 1)
+	tries := make([]*sleepLegacyEncodedTry, 0, 1)
 	for pc := 0; pc < len(function.Instructions); pc++ {
 		instructionPC := pc
 		instruction := function.Instructions[pc]
@@ -2713,7 +3153,7 @@ func (state *sleepSerializationEncoder) legacyBlockGraph(function *bytecode.Func
 			bodyFunction := &bytecode.Function{
 				Name:         function.Name + "<foreach>",
 				Span:         function.Span,
-				Instructions: append([]bytecode.Instruction(nil), function.Instructions[region.bodyStart:region.jumpPC]...),
+				Instructions: slicedLegacyInstructions(function.Instructions, region.bodyStart, region.jumpPC),
 			}
 			bodyFunction.Instructions = append(bodyFunction.Instructions, bytecode.Instruction{Op: bytecode.OpEnd, Span: instruction.Span})
 			bodyGraph, err := state.legacyBlockGraph(bodyFunction)
@@ -2760,6 +3200,49 @@ func (state *sleepSerializationEncoder) legacyBlockGraph(function *bytecode.Func
 				destroyPC:  region.destroyPC,
 			})
 			pc = region.destroyPC
+		case bytecode.OpEnterTry:
+			region, err := sleepCompiledTryRegion(function, pc)
+			if err != nil {
+				return nil, err
+			}
+			ownerFunction := &bytecode.Function{
+				Name:         function.Name + "<try>",
+				Span:         function.Span,
+				Instructions: slicedLegacyInstructions(function.Instructions, region.bodyStart, region.leavePC+1),
+			}
+			ownerFunction.Instructions = append(ownerFunction.Instructions, bytecode.Instruction{Op: bytecode.OpEnd, Span: instruction.Span})
+			ownerGraph, err := state.legacyBlockGraph(ownerFunction)
+			if err != nil {
+				return nil, err
+			}
+			handlerFunction := &bytecode.Function{
+				Name:         function.Name + "<catch>",
+				Span:         function.Span,
+				Instructions: []bytecode.Instruction{{Op: bytecode.OpLeaveTry, Span: function.Instructions[region.catchPC].Span}},
+			}
+			handlerFunction.Instructions = append(handlerFunction.Instructions, slicedLegacyInstructions(function.Instructions, region.handlerStart, region.endPC)...)
+			handlerFunction.Instructions = append(handlerFunction.Instructions, bytecode.Instruction{Op: bytecode.OpEnd, Span: instruction.Span})
+			handlerGraph, err := state.legacyBlockGraph(handlerFunction)
+			if err != nil {
+				return nil, err
+			}
+			tryStep := builder.appendWithFields(
+				sleepTryDescriptor,
+				instruction.Span,
+				handlerGraph.block,
+				ownerGraph.block,
+				sleepJavaString(region.varname),
+			)
+			pcStep[pc] = tryStep
+			tries = append(tries, &sleepLegacyEncodedTry{
+				ownerGraph: ownerGraph, handlerGraph: handlerGraph, tryStep: tryStep,
+				enterPC: pc, bodyStart: region.bodyStart, leavePC: region.leavePC,
+				catchPC: region.catchPC, handlerStart: region.handlerStart, endPC: region.endPC,
+				varname: region.varname,
+			})
+			pc = region.endPC - 1
+		case bytecode.OpLeaveTry:
+			builder.append(sleepPopTryDescriptor, instruction.Span)
 		case bytecode.OpReturn:
 			builder.append(sleepCreateFrameDescriptor, instruction.Span)
 			if instruction.Expr == nil {
@@ -2815,7 +3298,7 @@ func (state *sleepSerializationEncoder) legacyBlockGraph(function *bytecode.Func
 			pcStep[instructionPC] = builder.steps[start].object
 		}
 	}
-	graph := &sleepLegacyEncodedBlock{block: builder.object(), pcStep: pcStep, foreach: foreach}
+	graph := &sleepLegacyEncodedBlock{block: builder.object(), function: function, pcStep: pcStep, foreach: foreach, tries: tries}
 	state.legacyFunctions[function] = graph
 	return graph, nil
 }

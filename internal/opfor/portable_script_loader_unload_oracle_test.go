@@ -3,10 +3,7 @@ package opfor
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"fmt"
 	"os"
-	osexec "os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -69,27 +66,13 @@ func TestPortableScriptLoaderPostUnloadRerunMutatesSameEnvironment(t *testing.T)
 }
 
 func TestOfficialSleepPortableScriptLoaderPostUnloadRerunMutation(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for post-unload ScriptLoader mutation verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSleep21JARSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSleep21JARSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java = "java"
-	}
+	jar, java := officialSleepDifferentialTools(t)
 
 	mainPath := filepath.Join(t.TempDir(), "script-loader-post-unload.sl")
 	if err := os.WriteFile(mainPath, []byte(portableScriptLoaderPostUnloadMutationProbe), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	reference, err := osexec.Command(java, "-Dfile.encoding=UTF-8", "-jar", jar, mainPath).CombinedOutput()
+	reference, err := officialSleepJavaCommand(java, "-Dfile.encoding=UTF-8", "-jar", jar, mainPath).CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep post-unload mutation probe: %v\n%s", err, reference)
 	}
@@ -114,27 +97,13 @@ func TestPortableScriptLoaderForkOutlivesLogicalUnload(t *testing.T) {
 }
 
 func TestOfficialSleepPortableScriptLoaderForkOutlivesLogicalUnload(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for fork-after-unload verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSleep21JARSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSleep21JARSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java = "java"
-	}
+	jar, java := officialSleepDifferentialTools(t)
 
 	mainPath := filepath.Join(t.TempDir(), "script-loader-fork-unload.sl")
 	if err := os.WriteFile(mainPath, []byte(portableScriptLoaderForkAfterUnloadProbe), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	reference, err := osexec.Command(java, "-Dfile.encoding=UTF-8", "-jar", jar, mainPath).CombinedOutput()
+	reference, err := officialSleepJavaCommand(java, "-Dfile.encoding=UTF-8", "-jar", jar, mainPath).CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep fork-after-unload probe: %v\n%s", err, reference)
 	}

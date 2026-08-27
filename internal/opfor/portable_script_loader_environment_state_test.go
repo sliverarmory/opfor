@@ -3,7 +3,6 @@ package opfor
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"fmt"
 	"os"
 	osexec "os/exec"
@@ -310,21 +309,7 @@ func TestPortableScriptEnvironmentMutableStateConcurrent(t *testing.T) {
 }
 
 func TestOfficialSleepPortableScriptEnvironmentMutableTableAndStack(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for mutable ScriptEnvironment verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSleep21JARSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSleep21JARSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java = "java"
-	}
+	jar, java := officialSleepDifferentialTools(t)
 
 	directory := t.TempDir()
 	mainPath := filepath.Join(directory, "loader-environment-state.sl")
@@ -332,7 +317,7 @@ func TestOfficialSleepPortableScriptEnvironmentMutableTableAndStack(t *testing.T
 	if err := os.WriteFile(mainPath, []byte(source), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	command := osexec.Command(java, "-Dfile.encoding=UTF-8", "-jar", jar, mainPath)
+	command := officialSleepJavaCommand(java, "-Dfile.encoding=UTF-8", "-jar", jar, mainPath)
 	reference, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep: %v\n%s", err, reference)
@@ -357,21 +342,7 @@ func TestOfficialSleepPortableScriptEnvironmentMutableTableAndStack(t *testing.T
 }
 
 func TestOfficialSleepPortableScriptEnvironmentSetEnvironmentDuringFirstRun(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for first-run ScriptEnvironment verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSleep21JARSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSleep21JARSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java = "java"
-	}
+	jar, java := officialSleepDifferentialTools(t)
 
 	directory := t.TempDir()
 	var reference bytes.Buffer
@@ -384,7 +355,7 @@ func TestOfficialSleepPortableScriptEnvironmentSetEnvironmentDuringFirstRun(t *t
 			t.Fatal(err)
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		command := osexec.CommandContext(ctx, java, "-Dfile.encoding=UTF-8", "-jar", jar, mainPath)
+		command := officialSleepJavaCommandContext(ctx, java, "-Dfile.encoding=UTF-8", "-jar", jar, mainPath)
 		output, commandErr := command.CombinedOutput()
 		deadlineErr := ctx.Err()
 		cancel()

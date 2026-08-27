@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"os"
-	osexec "os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -70,7 +69,7 @@ func TestSleepClosureScopeOfficialJARDifferential(t *testing.T) {
 	if err := os.WriteFile(path, []byte(sleepClosureScopeProbe), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	command := osexec.Command(java, "-jar", jar, path)
+	command := officialSleepJavaCommand(java, "-jar", jar, path)
 	command.Dir = directory
 	want, err := command.CombinedOutput()
 	if err != nil {

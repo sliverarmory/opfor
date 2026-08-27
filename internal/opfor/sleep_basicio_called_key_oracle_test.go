@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"os"
-	osexec "os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -122,7 +121,7 @@ func TestSleepBasicIOSharedBridgeCalledKeyOfficialJARDifferential(t *testing.T) 
 	if err := os.WriteFile(path, []byte(sleepBasicIOCalledKeyProbe), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	want, err := osexec.Command(java, "-jar", jar, path).CombinedOutput()
+	want, err := officialSleepJavaCommand(java, "-jar", jar, path).CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep BasicIO called-key probe: %v\n%s", err, want)
 	}

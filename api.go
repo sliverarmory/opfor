@@ -1721,6 +1721,13 @@ type ScriptLifecycleFuncs = opforimpl.ScriptLifecycleFuncs
 // and inherit the parent runtime's observer.
 type ScriptLifecycleObserver = opforimpl.ScriptLifecycleObserver
 
+// ScriptLoaderCache is an explicit, concurrency-safe shared compilation
+// capability for Sleep ScriptLoader.setGlobalCache. Runtimes remain isolated
+// unless an importer deliberately supplies the same cache to each of them.
+// Cached Programs are immutable; loading one still creates independent script
+// globals, callbacks, and lifecycle state.
+type ScriptLoaderCache = opforimpl.ScriptLoaderCache
+
 // ScriptProfileSnapshot is a detached, deterministically ordered profile for
 // one exact loaded script. Mutating Statistics does not affect runtime state.
 type ScriptProfileSnapshot = opforimpl.ScriptProfileSnapshot
@@ -2786,6 +2793,10 @@ func NewReadOnlyArray(values ...Value) *Array { return opforimpl.NewReadOnlyArra
 // copied into the new hash in lexical key order.
 func NewReadOnlyHash(values map[string]Value) *Hash { return opforimpl.NewReadOnlyHash(values) }
 
+// NewScriptLoaderCache constructs an empty shared ScriptLoader compilation
+// cache. Supplying it to more than one Runtime is the opt-in sharing boundary.
+func NewScriptLoaderCache() *ScriptLoaderCache { return opforimpl.NewScriptLoaderCache() }
+
 // NewSource constructs a named source unit without copying data.
 func NewSource(name string, data []byte) Source { return opforimpl.NewSource(name, data) }
 
@@ -3143,6 +3154,14 @@ func WithObjectHost(host ObjectHost) Option { return opforimpl.WithObjectHost(ho
 // runtimes.
 func WithScriptLifecycleObserver(observer ScriptLifecycleObserver) Option {
 	return opforimpl.WithScriptLifecycleObserver(observer)
+}
+
+// WithScriptLoaderCache enables the explicit sharing capability used when a
+// Sleep script calls ScriptLoader.setGlobalCache(true). The same cache may be
+// supplied to multiple runtimes; without this option, enabling the upstream
+// process-global cache remains an explicit unsupported operation.
+func WithScriptLoaderCache(cache *ScriptLoaderCache) Option {
+	return opforimpl.WithScriptLoaderCache(cache)
 }
 
 // WithSleepClasspath configures the semicolon- or colon-separated source and

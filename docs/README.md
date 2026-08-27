@@ -15,6 +15,60 @@ The project targets Go 1.24 or newer and remains in the `v0.x` alpha series.
 Exported APIs may still change when compatibility evidence requires a better
 contract.
 
+## `v0.1.0-alpha.2` release gates
+
+Alpha.2 focuses on official Sleep 2.1 compatibility and interpreter
+performance. Its checkable additions are:
+
+- one SHA-256-authenticated official-JAR helper for every differential test,
+  with `OPFOR_REQUIRE_SLEEP_JAR=1` hard-failure mode and a required alpha-tag
+  release job;
+- `BenchmarkSleep*` workloads for arithmetic, Sleep/native calls, arrays,
+  foreach, strings, regex, literals/closures, runtime lifecycle, and the pinned
+  upstream corpus, plus `make bench-sleep` and a required CI smoke run;
+- zero-allocation direct `Array.Len`, `Get`, and `Set`, and a root-only linear
+  append path which retains sublist invalidation and resource accounting;
+- disabled-taint, unmetered-VM, synchronous closure/native lease, and simple
+  evaluator fast paths with cancellation, unload, and limited-mode regressions;
+- compile-time numeric/string literal and closure-function templates, and a
+  concurrency-safe 128-entry per-runtime regex LRU;
+- explicit cross-runtime ScriptLoader compilation sharing through
+  `NewScriptLoaderCache` and `WithScriptLoaderCache`; and
+- official-JAR regressions for saved closure control contexts and non-empty
+  zero-width regex matches between UTF-16 surrogate halves.
+
+Against baseline commit
+`7b65175040b736c95cbf53cbfe7a468f803a9457`, sequential count-10 measurements
+on an Apple M5 Max improved the unmetered arithmetic benchmark by 32.9%, Sleep
+function calls by 53.1%, and native calls by 50.5%. Function calls used about
+48% fewer bytes and 59% fewer allocations; native calls used about 72% fewer
+bytes and 68% fewer allocations. These are local comparison results, not
+portable timing promises. Re-run with `BENCHTIME=3s make bench-sleep` before
+comparing machines or commits.
+
+To compare OPFOR directly with the official Sleep 2.1 Java interpreter, point
+`OPFOR_SLEEP_JAR` at the pinned upstream JAR and run:
+
+```console
+make bench-sleep-compare OPFOR_SLEEP_JAR=/path/to/sleep-2.1.jar
+```
+
+The comparison runs seven identical Sleep workloads through both interpreters,
+checks that both return the expected result, and reports median compilation and
+execution nanoseconds per operation. Both interpreters compile and execute
+in-process after warmup; Java process startup and helper compilation are outside
+the measured intervals. The command verifies the same official-JAR SHA-256 used
+by the compatibility suite. Pass
+`SLEEP_COMPARE_FLAGS='-samples 30 -warmup 50'` to `make` when collecting longer
+measurements; the runner also supports `-execute-iterations` and
+`-compile-iterations`.
+
+The checked-in [alpha.2 comparison](benchmarks/opfor-vs-sleep-2.1-alpha.2.md)
+records the default run on an Apple M5 Max. It shows OPFOR compiling every
+workload faster, while the warmed Java interpreter remains faster for every
+execution workload; string concatenation, array append, and regex matching have
+the largest measured execution gaps.
+
 OPFOR is not a JVM and `Host` is not a sandbox. Portable file, process, socket,
 and console functions perform real local effects. Java-style object syntax is
 an importer boundary implemented with `ObjectHost`, with a deliberately small
@@ -157,6 +211,7 @@ These APIs are independent of any particular Aggressor function family:
 | `WithLoadableProvider` | Map Sleep `use()` identities to pure-Go, script-local bridges without executing Java bytecode. |
 | `WithClock` | Supply deterministic wall-clock behavior to portable date/time functions. |
 | `WithIncludeCyclePolicy` | Select safe include-cycle rejection or reference-compatible recursion. |
+| `NewScriptLoaderCache` / `WithScriptLoaderCache` | Explicitly share immutable ScriptLoader compilation results across selected runtimes. `setGlobalCache(true)` remains unsupported without this capability. |
 | `WithTaintMode`, `WithTaintFunction`, `WithTaintPolicy` | Enable and extend Sleep-compatible data-flow taint behavior. |
 
 ### Callback ownership

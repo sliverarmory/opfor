@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"os"
-	osexec "os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -41,7 +40,7 @@ func TestSleepBasicUtilitiesDebugStringCoercionOfficialJARDifferential(t *testin
 	if err := os.WriteFile(path, []byte(sleepDebugCoercionProbe), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	want, err := osexec.Command(java, "-jar", jar, path).CombinedOutput()
+	want, err := officialSleepJavaCommand(java, "-jar", jar, path).CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep debug coercion probe: %v\n%s", err, want)
 	}

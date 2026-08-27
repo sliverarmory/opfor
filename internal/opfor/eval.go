@@ -16,22 +16,42 @@ import (
 	"github.com/sliverarmory/opfor/internal/lexer"
 )
 
-func (f *fiber) eval(ctx context.Context, expression ast.Expr) (result Value, resultErr error) {
-	defer func() {
-		if resultErr != nil {
-			return
-		}
-		if err := scriptExecutionError(ctx); err != nil {
-			result = Null()
-			resultErr = err
-		}
-	}()
+func (f *fiber) eval(ctx context.Context, expression ast.Expr) (Value, error) {
 	if expression == nil {
 		return Null(), nil
+	}
+	if simpleEvaluatorExpression(expression) {
+		return f.evalValue(ctx, expression)
 	}
 	if err := scriptExecutionError(ctx); err != nil {
 		return Null(), err
 	}
+	result, err := f.evalValue(ctx, expression)
+	if err != nil {
+		return result, err
+	}
+	if err := scriptExecutionError(ctx); err != nil {
+		return Null(), err
+	}
+	return result, nil
+}
+
+// simpleEvaluatorExpression has no host-side effect of its own. Variable
+// provider reads retain their own before/after execution checks in scope;
+// built-in scope reads and immutable literals rely on the enclosing VM or
+// compound expression safe point. Avoiding two general context walks for each
+// arithmetic operand materially reduces interpreter-loop overhead without
+// weakening callback, mutation, or object-call cancellation boundaries.
+func simpleEvaluatorExpression(expression ast.Expr) bool {
+	switch expression.(type) {
+	case *ast.IdentifierExpr, *ast.VariableExpr, *ast.NumberExpr, *ast.BoolExpr, *ast.NullExpr, *ast.ImportPathExpr:
+		return true
+	default:
+		return false
+	}
+}
+
+func (f *fiber) evalValue(ctx context.Context, expression ast.Expr) (Value, error) {
 	switch node := expression.(type) {
 	case *ast.IdentifierExpr:
 		return String(node.Name), nil
@@ -41,6 +61,11 @@ func (f *fiber) eval(ctx context.Context, expression ast.Expr) (result Value, re
 		}
 		return f.readVariable(ctx, node.Raw, node.Span())
 	case *ast.NumberExpr:
+		if f != nil && f.closure != nil && f.closure.script != nil && f.closure.script.program != nil {
+			if literal, ok := f.closure.script.program.numberLiterals[node]; ok {
+				return literal.value, literal.err
+			}
+		}
 		return numberLiteral(node)
 	case *ast.BoolExpr:
 		return Bool(node.Value), nil
@@ -73,16 +98,23 @@ func (f *fiber) eval(ctx context.Context, expression ast.Expr) (result Value, re
 	case *ast.ClassExpr:
 		return ObjectValue(classReference(resolvePortableClassName(f.closure.script.resolveClass(node.Name)))), nil
 	case *ast.ClosureExpr:
-		compiled := compiler.CompileBlock("<closure>", node.Body)
-		if len(compiled.Diagnostics) != 0 {
-			return Null(), &CompileError{Diagnostics: compiled.Diagnostics}
+		function := f.function.ClosureTemplates[node]
+		if function == nil {
+			// Serialized or importer-synthesized functions may not belong to a
+			// Program compiled by the current compiler. Preserve that compatibility
+			// boundary while ordinary source uses the immutable template fast path.
+			compiled := compiler.CompileBlock("<closure>", node.Body)
+			if len(compiled.Diagnostics) != 0 {
+				return Null(), &CompileError{Diagnostics: compiled.Diagnostics}
+			}
+			function = compiled.Function
 		}
 		// SleepClosure constructs a fresh internal variable container for every
 		// closure. It does not retain the caller's active local or closure level;
 		// unresolved names fall through from the new internal level directly to
 		// the script globals. Explicit lambda()/let() bindings and this() remain
 		// the language mechanisms for installing closure-owned cells.
-		closure := f.closure.script.newClosure(compiled.Function, f.scope.root)
+		closure := f.closure.script.newClosure(function, f.scope.root)
 		return FunctionValue(closure), nil
 	case *ast.GroupExpr:
 		return f.eval(ctx, node.Expr)
@@ -269,12 +301,31 @@ func numberLiteral(node *ast.NumberExpr) (Value, error) {
 }
 
 func (f *fiber) stringLiteral(ctx context.Context, node *ast.StringExpr) (Value, error) {
-	if node.Kind == ast.SingleQuotedString {
+	var template compiledStringLiteral
+	var cached bool
+	if f != nil && f.closure != nil && f.closure.script != nil && f.closure.script.program != nil {
+		template, cached = f.closure.script.program.stringLiterals[node]
+	}
+	if cached {
+		if template.err != nil {
+			return Null(), template.err
+		}
+		if template.static {
+			if node.Kind == ast.DoubleQuotedString {
+				return f.closure.script.runtime.permeateResultFrom(ctx, template.value, nil, node.Span()), nil
+			}
+			return template.value, nil
+		}
+	} else if node.Kind == ast.SingleQuotedString {
 		return String(decodeSleepSingleQuoted(node.Text)), nil
 	}
-	decoded, err := decodeSleepEscapesAt(node.Text, node.TextRange)
-	if err != nil {
-		return Null(), err
+	decoded := template.decoded
+	if !cached {
+		var err error
+		decoded, err = decodeSleepEscapesAt(node.Text, node.TextRange)
+		if err != nil {
+			return Null(), err
+		}
 	}
 	switch node.Kind {
 	case ast.DoubleQuotedString:
@@ -526,6 +577,8 @@ func (f *fiber) interpolate(ctx context.Context, literal decodedSleepLiteral, sp
 	input := literal.text
 	result := String("")
 	var tainted []Value
+	taintMode := f != nil && f.closure != nil && f.closure.script != nil &&
+		f.closure.script.runtime != nil && f.closure.script.runtime.taintMode
 	literalStart := 0
 	appendLiteral := func(end int) {
 		if end > literalStart {
@@ -568,7 +621,7 @@ func (f *fiber) interpolate(ctx context.Context, literal decodedSleepLiteral, sp
 			if err != nil {
 				return Null(), nil, err
 			}
-			if value.IsTainted() {
+			if taintMode && value.IsTainted() {
 				tainted = append(tainted, value)
 			}
 			width = int(value.Int32())
@@ -600,7 +653,7 @@ func (f *fiber) interpolate(ctx context.Context, literal decodedSleepLiteral, sp
 				return Null(), nil, err
 			}
 		}
-		if variable.IsTainted() {
+		if taintMode && variable.IsTainted() {
 			tainted = append(tainted, variable)
 		}
 		value := sleepStringCoercion(variable)
@@ -931,14 +984,16 @@ func (f *fiber) evalBinaryValues(ctx context.Context, operator string, span Span
 		return numericBinary(left, op, right)
 	case ".":
 		result := sleepStringConcat(left, right)
-		return f.closure.script.runtime.permeateResultFrom(ctx, result, taintedValues(left, right), span), nil
+		runtime := f.closure.script.runtime
+		return runtime.permeateResultFrom(ctx, result, runtime.taintedValues(left, right), span), nil
 	case "x":
 		count := int(right.Int32())
 		if count < 0 {
 			count = 0
 		}
 		result := sleepStringRepeat(left, count)
-		return f.closure.script.runtime.permeateResultFrom(ctx, result, taintedValues(left, right), span), nil
+		runtime := f.closure.script.runtime
+		return runtime.permeateResultFrom(ctx, result, runtime.taintedValues(left, right), span), nil
 	case "==", "!=", "<", "<=", ">", ">=":
 		result := numericCompare(left, op, right)
 		return Bool(result), nil
@@ -1231,7 +1286,7 @@ type regexCursor struct {
 func (f *fiber) regexMatch(ctx context.Context, operator, text, pattern string) (bool, error) {
 	negated := strings.HasPrefix(operator, "!")
 	operator = strings.TrimPrefix(operator, "!")
-	expression, err := compileSleepRegexBridge(pattern, operator == "ismatch")
+	expression, err := f.closure.script.runtime.compileSleepRegexBridge(pattern, operator == "ismatch")
 	if err != nil {
 		var warning *uncaughtScriptWarning
 		if errors.As(err, &warning) {
@@ -1514,7 +1569,8 @@ func (f *fiber) assignOne(ctx context.Context, target ast.Expr, operator string,
 					return Null(), applyErr
 				}
 				if baseOperator == "." || baseOperator == "x" {
-					updated = f.closure.script.runtime.permeateResultFrom(ctx, updated, taintedValues(a, b), Span{Source: target.Span().Source})
+					runtime := f.closure.script.runtime
+					updated = runtime.permeateResultFrom(ctx, updated, runtime.taintedValues(a, b), Span{Source: target.Span().Source})
 				}
 				item, ok, accessErr := left.cellAtExecution(ctx, f.closure.script, index)
 				if accessErr != nil {
@@ -1537,7 +1593,8 @@ func (f *fiber) assignOne(ctx context.Context, target ast.Expr, operator string,
 	if baseOperator == "." || baseOperator == "x" {
 		// Sleep's compound-assignment helper does not copy the source line onto
 		// its synthetic operation step; DEBUG_TRACE_TAINT therefore reports 0.
-		updated = f.closure.script.runtime.permeateResultFrom(ctx, updated, taintedValues(current, value), Span{Source: target.Span().Source})
+		runtime := f.closure.script.runtime
+		updated = runtime.permeateResultFrom(ctx, updated, runtime.taintedValues(current, value), Span{Source: target.Span().Source})
 	}
 	if err := f.setCellAtExecution(ctx, cell, updated, target.Span()); err != nil {
 		return Null(), err
@@ -2102,7 +2159,7 @@ func (f *fiber) specialCall(ctx context.Context, call *ast.CallExpr, name string
 			}
 			values[index] = value
 		}
-		expression, err := compileSleepRegexBridge(sleepCanonicalString(values[1]), false)
+		expression, err := f.closure.script.runtime.compileSleepRegexBridge(sleepCanonicalString(values[1]), false)
 		if err != nil {
 			return Null(), true, err
 		}
@@ -2145,7 +2202,7 @@ func (f *fiber) specialCall(ctx context.Context, call *ast.CallExpr, name string
 			}
 		}
 		result := ArrayValue(NewArray(matches...))
-		if len(taintedValues(values[0], values[1])) != 0 {
+		if len(f.closure.script.runtime.taintedValues(values[0], values[1])) != 0 {
 			result = f.closure.script.runtime.TaintAll(result)
 		}
 		return result, true, nil
@@ -2166,7 +2223,7 @@ func (f *fiber) specialCall(ctx context.Context, call *ast.CallExpr, name string
 			values[index] = value
 		}
 		text := sleepCanonicalString(values[0])
-		expression, err := compileSleepRegexBridge(sleepCanonicalString(values[1]), false)
+		expression, err := f.closure.script.runtime.compileSleepRegexBridge(sleepCanonicalString(values[1]), false)
 		if err != nil {
 			return Null(), true, err
 		}
@@ -2701,8 +2758,11 @@ func (f *fiber) invokeNamed(ctx context.Context, callExpr *ast.CallExpr, name st
 	var value Value
 	var err error
 	closure := f.closure.script.resolveFunction(name)
-	taintedInputs := taintedArgumentValues(arguments)
-	taintedDescription := describeTaintedValues(taintedInputs)
+	runtime := f.closure.script.runtime
+	taintedDescription := ""
+	if runtime.taintMode {
+		taintedDescription = describeTaintedValues(taintedArgumentValues(arguments))
+	}
 	if closure != nil {
 		if scriptClosure, ok := closure.(*scriptClosure); ok {
 			if invalid := validateNamedParameters(arguments); invalid != nil {
@@ -2736,15 +2796,15 @@ func (f *fiber) invokeNamed(ctx context.Context, callExpr *ast.CallExpr, name st
 		f.closure.script.runtime.writeWarning("Attempted to call non-existent function &"+strings.TrimPrefix(name, "&"), span)
 		value = Null()
 	} else {
-		value, err = f.closure.script.runtime.invoke(ctx, Invocation{Script: f.closure.script.id, Name: name, Span: span, Arguments: arguments})
+		value, err = runtime.invoke(ctx, Invocation{Script: f.closure.script.id, Name: name, Span: span, Arguments: arguments})
 		if err != nil && f.warnsForMissingSleepBridge(err) {
-			f.closure.script.runtime.writeWarning("Attempted to call non-existent function &"+strings.TrimPrefix(name, "&"), span)
+			runtime.writeWarning("Attempted to call non-existent function &"+strings.TrimPrefix(name, "&"), span)
 			value, err = Null(), nil
 		}
 	}
 	if err == nil && closure != nil {
 		if policyCallable, ok := closure.(interface{ appliesTaintPolicy() bool }); !ok || !policyCallable.appliesTaintPolicy() {
-			value = f.closure.script.runtime.permeateResultWithDescription(ctx, value, taintedDescription, span)
+			value = runtime.permeateResultWithDescription(ctx, value, taintedDescription, span)
 		}
 	}
 	var leak *localScopeLeakError
@@ -2805,11 +2865,15 @@ func (f *fiber) invokeCallableAt(ctx context.Context, call *ast.CallExpr, value 
 		return Null(), ErrInvalidCallable
 	}
 	traceFrame := f.beginCallTrace(formatClosureCall(value, "", arguments), call.Span())
-	taintedInputs := taintedArgumentValues(arguments)
-	if value.IsTainted() {
-		taintedInputs = append([]Value{value}, taintedInputs...)
+	runtime := f.closure.script.runtime
+	taintedDescription := ""
+	if runtime.taintMode {
+		taintedInputs := taintedArgumentValues(arguments)
+		if value.IsTainted() {
+			taintedInputs = append([]Value{value}, taintedInputs...)
+		}
+		taintedDescription = describeTaintedValues(taintedInputs)
 	}
-	taintedDescription := describeTaintedValues(taintedInputs)
 	var result Value
 	var err error
 	if closure, ok := callable.(*scriptClosure); ok && closure.inline {
@@ -2822,7 +2886,7 @@ func (f *fiber) invokeCallableAt(ctx context.Context, call *ast.CallExpr, value 
 		result, err = f.invokeCallable(ctx, value, arguments)
 	}
 	if err == nil {
-		result = f.closure.script.runtime.permeateResultWithDescription(ctx, result, taintedDescription, call.Span())
+		result = runtime.permeateResultWithDescription(ctx, result, taintedDescription, call.Span())
 	}
 	if traceFrame != nil {
 		f.finishCallTrace(traceFrame, result, err)
@@ -2971,7 +3035,7 @@ func (f *fiber) evalObjectAt(ctx context.Context, node *ast.ObjectExpr, warningS
 		if trace {
 			traceFrame = f.beginCallTrace(traceCall, node.Span())
 		}
-		taintedInputs := taintedArgumentValues(arguments)
+		taintedInputs := f.closure.script.runtime.taintedArguments(arguments)
 		value, callErr := f.closure.script.runtime.objectHost.Object(ctx, invocation)
 		if traceFrame != nil {
 			f.finishCallTrace(traceFrame, value, callErr)
@@ -2987,8 +3051,9 @@ func (f *fiber) evalObjectAt(ctx context.Context, node *ast.ObjectExpr, warningS
 		return Null(), err
 	}
 	if callable, ok := target.Function(); ok {
-		taintedInputs := taintedArgumentValues(arguments)
-		if target.IsTainted() {
+		runtime := f.closure.script.runtime
+		taintedInputs := runtime.taintedArguments(arguments)
+		if runtime.taintMode && target.IsTainted() {
 			taintedInputs = append([]Value{target}, taintedInputs...)
 		}
 		traceFrame := f.beginCallTrace(formatClosureCall(target, message, arguments), node.Span())
@@ -3027,7 +3092,7 @@ func (f *fiber) evalObjectAt(ctx context.Context, node *ast.ObjectExpr, warningS
 			}
 			return f.handleBracketCallError(callErr, node.Span())
 		}
-		value = f.closure.script.runtime.permeateResultFrom(ctx, value, taintedInputs, node.Span())
+		value = runtime.permeateResultFrom(ctx, value, taintedInputs, node.Span())
 		return value, nil
 	}
 	if target.IsNull() {
@@ -3043,17 +3108,19 @@ func (f *fiber) evalObjectAt(ctx context.Context, node *ast.ObjectExpr, warningS
 	if message == "" {
 		invocation.Op = ObjectGet
 	}
-	taintedInputs := taintedArgumentValues(arguments)
-	if target.IsTainted() {
+	runtime := f.closure.script.runtime
+	taintedInputs := runtime.taintedArguments(arguments)
+	targetTainted := runtime.taintMode && target.IsTainted()
+	if targetTainted {
 		taintedInputs = append([]Value{target}, taintedInputs...)
 	}
-	if len(taintedInputs) != 0 && !target.IsTainted() && !invocation.Target.IsNull() {
-		target = f.closure.script.runtime.Taint(target)
+	if len(taintedInputs) != 0 && !targetTainted && !invocation.Target.IsNull() {
+		target = runtime.Taint(target)
 		invocation.Target = target
 		if cell, referenceErr := f.referenceCell(ctx, node.Target, false); referenceErr == nil && cell != nil {
 			cell.setTaintValue(target)
 		}
-		f.closure.script.runtime.traceTaint(ctx, "tainted object: "+target.Describe()+" from: "+describeTaintedValues(taintedInputs), node.Span())
+		runtime.traceTaint(ctx, "tainted object: "+target.Describe()+" from: "+describeTaintedValues(taintedInputs), node.Span())
 	}
 	traceCall, trace := portableObjectCallTrace(invocation)
 	var traceFrame *callTraceFrame
@@ -3067,7 +3134,7 @@ func (f *fiber) evalObjectAt(ctx context.Context, node *ast.ObjectExpr, warningS
 	if callErr != nil {
 		return f.handlePortableObjectError(callErr, node.Span())
 	}
-	value = f.closure.script.runtime.permeateResultFrom(ctx, value, taintedInputs, node.Span())
+	value = runtime.permeateResultFrom(ctx, value, taintedInputs, node.Span())
 	return value, nil
 }
 

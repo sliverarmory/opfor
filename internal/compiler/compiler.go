@@ -481,9 +481,15 @@ func (c *functionCompiler) validateExpression(expression ast.Expr, role expressi
 	case *ast.ReferenceExpr:
 		c.validateExpression(node.Target, expressionValueRole)
 	case *ast.ClosureExpr:
-		// Validate anonymous closures during the outer compile as well as when
-		// the runtime materializes their executable function.
-		c.owner.compileFunction("<closure>", node.Body.Span(), node.Body.Statements)
+		// Compile anonymous closures with their owning Program. Runtime
+		// evaluation creates fresh closure identity/state from this immutable
+		// function template instead of reparsing the body on every iteration.
+		if c.function.ClosureTemplates == nil {
+			c.function.ClosureTemplates = make(map[*ast.ClosureExpr]*bytecode.Function)
+		}
+		if _, exists := c.function.ClosureTemplates[node]; !exists {
+			c.function.ClosureTemplates[node] = c.owner.compileFunction("<closure>", node.Body.Span(), node.Body.Statements)
+		}
 	}
 }
 

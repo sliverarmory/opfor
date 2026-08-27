@@ -3,11 +3,9 @@ package opfor
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"os"
-	osexec "os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -667,21 +665,7 @@ return @($defaults, $selected, $disabled, [$invalid runScript], [$loader getChar
 }
 
 func TestOfficialSleepPortableScriptLoaderCharsetControls(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for ScriptLoader charset differential verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSleep21JARSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSleep21JARSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java = "java"
-	}
+	jar, java := officialSleepDifferentialTools(t)
 
 	directory := t.TempDir()
 	windowsPath := filepath.Join(directory, "windows-1252.sl")
@@ -713,7 +697,7 @@ println("reset=" . ([$loader getCharset] is $null));
 		t.Fatal(err)
 	}
 
-	command := osexec.Command(java, "-Dfile.encoding=UTF-8", "-jar", jar, mainPath)
+	command := officialSleepJavaCommand(java, "-Dfile.encoding=UTF-8", "-jar", jar, mainPath)
 	reference, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep: %v\n%s", err, reference)
@@ -778,21 +762,7 @@ return @([$toLoad toArray], [$toUnload toArray], $toLoad isa ^java.util.Set, $to
 }
 
 func TestOfficialSleepPortableScriptLoaderConfiguredSetDeltas(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for ScriptLoader set-delta differential verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSleep21JARSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSleep21JARSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java = "java"
-	}
+	jar, java := officialSleepDifferentialTools(t)
 	source := `import sleep.runtime.ScriptLoader;
 $loader = [new ScriptLoader];
 $block = [$loader compileScript: "body", 'return 1;'];
@@ -809,7 +779,7 @@ println("unload=" . [$loader getScriptsToUnload: $configured]);
 	if err := os.WriteFile(mainPath, []byte(source), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	command := osexec.Command(java, "-Dfile.encoding=UTF-8", "-jar", jar, mainPath)
+	command := officialSleepJavaCommand(java, "-Dfile.encoding=UTF-8", "-jar", jar, mainPath)
 	reference, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep: %v\n%s", err, reference)
@@ -1119,21 +1089,7 @@ return @($first_result, $second_result);
 }
 
 func TestOfficialSleepPortableScriptLoaderLiveViewsAndSharedHashtable(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for ScriptLoader live-view/shared-environment verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSleep21JARSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSleep21JARSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java = "java"
-	}
+	jar, java := officialSleepDifferentialTools(t)
 	directory := t.TempDir()
 	mainPath := filepath.Join(directory, "loader-live-shared.sl")
 	source := `import sleep.runtime.ScriptLoader;
@@ -1166,7 +1122,7 @@ println("shared=" . $first_result . "/" . $second_result . "/" . $marker . "/" .
 	if err := os.WriteFile(mainPath, []byte(source), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	command := osexec.Command(java, "-jar", jar, mainPath)
+	command := officialSleepJavaCommand(java, "-jar", jar, mainPath)
 	reference, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep: %v\n%s", err, reference)
@@ -1469,24 +1425,7 @@ func TestPortableScriptInstanceChangeTrackingConcurrent(t *testing.T) {
 }
 
 func TestOfficialSleepPortableScriptLoaderHasChanged(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for ScriptLoader change-tracking verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSleep21JARSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSleep21JARSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java, err = osexec.LookPath("java")
-		if err != nil {
-			t.Skipf("official JAR supplied but java is unavailable: %v", err)
-		}
-	}
+	jar, java := officialSleepDifferentialTools(t)
 
 	const source = `
 import sleep.runtime.ScriptLoader;
@@ -1515,7 +1454,7 @@ println("after-change=" . [$tracked hasChanged]);
 
 	javaRoot := t.TempDir()
 	prepare(javaRoot)
-	command := osexec.Command(java, "-jar", jar, "-e", source)
+	command := officialSleepJavaCommand(java, "-jar", jar, "-e", source)
 	command.Dir = javaRoot
 	want, err := command.CombinedOutput()
 	if err != nil {
@@ -1605,14 +1544,7 @@ func mustSetScriptLoaderModTime(t *testing.T, path string, when time.Time) {
 }
 
 func TestOfficialSleepPortableScriptLoaderRepeatAndUnload(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for ScriptLoader differential verification")
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java = "java"
-	}
+	jar, java := officialSleepDifferentialTools(t)
 	directory := t.TempDir()
 	childPath := filepath.Join(directory, "counter.sl")
 	mainPath := filepath.Join(directory, "loader.sl")
@@ -1633,7 +1565,7 @@ println("r3=" . [$script runScript]);
 	if err := os.WriteFile(mainPath, []byte(source), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	command := osexec.Command(java, "-jar", jar, mainPath)
+	command := officialSleepJavaCommand(java, "-jar", jar, mainPath)
 	reference, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep: %v\n%s", err, reference)
@@ -1656,24 +1588,7 @@ println("r3=" . [$script runScript]);
 }
 
 func TestOfficialSleepPortableScriptLoaderRetainedClosureAfterUnload(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for retained ScriptLoader closure verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSleep21JARSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSleep21JARSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java, err = osexec.LookPath("java")
-		if err != nil {
-			t.Skipf("official JAR supplied but java is unavailable: %v", err)
-		}
-	}
+	jar, java := officialSleepDifferentialTools(t)
 	directory := t.TempDir()
 	childPath := filepath.Join(directory, "retained-closure-child.sl")
 	mainPath := filepath.Join(directory, "retained-closure-loader.sl")
@@ -1691,7 +1606,7 @@ println([$child isLoaded]);
 	if err := os.WriteFile(mainPath, []byte(source), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	command := osexec.Command(java, "-jar", jar, mainPath)
+	command := officialSleepJavaCommand(java, "-jar", jar, mainPath)
 	want, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep retained closure: %v\n%s", err, want)
@@ -1715,14 +1630,7 @@ println([$child isLoaded]);
 }
 
 func TestOfficialSleepPortableScriptLoaderCompileAndEnvironment(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for ScriptLoader differential verification")
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java = "java"
-	}
+	jar, java := officialSleepDifferentialTools(t)
 	directory := t.TempDir()
 	streamPath := filepath.Join(directory, "stream.sl")
 	mainPath := filepath.Join(directory, "loader.sl")
@@ -1758,7 +1666,7 @@ println("noRef=" . [$loader isLoaded: "no-reference"] . "/" . [$nr isLoaded] . "
 	if err := os.WriteFile(mainPath, []byte(source), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	command := osexec.Command(java, "-jar", jar, mainPath)
+	command := officialSleepJavaCommand(java, "-jar", jar, mainPath)
 	reference, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep: %v\n%s", err, reference)

@@ -18,7 +18,7 @@ import (
 func TestValidReleaseVersion(t *testing.T) {
 	for _, version := range []string{
 		"v0.1.0",
-		"v0.1.0-alpha.1",
+		"v0.1.0-alpha.2",
 		"v12.34.56-rc.2+build.7",
 		"v1.2.3-alpha--candidate+build--metadata",
 		"v1.2.3+001",

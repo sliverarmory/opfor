@@ -3,10 +3,8 @@ package opfor
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"fmt"
 	"os"
-	osexec "os/exec"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
@@ -263,32 +261,14 @@ func assertDynamicSourceSerializedContextGraph(t *testing.T, stream []byte, want
 }
 
 func TestOfficialSleepDynamicSourceContinuationInterop(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for dynamic-source continuation interoperability")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	const officialSHA256 = "0ddde5e9e8d8d8d334d071b1f887c379f5d0be9b190566f05365997b3e375ff1"
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java, err = osexec.LookPath("java")
-		if err != nil {
-			t.Skipf("official JAR supplied but java is unavailable: %v", err)
-		}
-	}
+	jar, java := officialSleepDifferentialTools(t)
 
 	temporary := t.TempDir()
 	names := []string{"eval", "two", "outer", "eval-inline", "expr-inline", "include", "foreach"}
 	officialPaths := dynamicSourceStreamPaths(temporary, "official", names)
 	producerArgs := []string{"-jar", jar, filepath.Join("testdata", "serialization", "produce_dynamic_sources.sl")}
 	producerArgs = append(producerArgs, officialPaths...)
-	producer := osexec.Command(java, producerArgs...)
+	producer := officialSleepJavaCommand(java, producerArgs...)
 	if output, err := producer.CombinedOutput(); err != nil {
 		t.Fatalf("official Sleep dynamic-source producer: %v\n%s", err, output)
 	} else if len(output) != 0 {
@@ -412,7 +392,7 @@ func runOfficialDynamicSourceConsumer(t *testing.T, java, jar string, paths []st
 	t.Helper()
 	arguments := []string{"-jar", jar, filepath.Join("testdata", "serialization", "consume_dynamic_sources.sl")}
 	arguments = append(arguments, paths...)
-	command := osexec.Command(java, arguments...)
+	command := officialSleepJavaCommand(java, arguments...)
 	output, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep dynamic-source consumer: %v\n%s", err, output)

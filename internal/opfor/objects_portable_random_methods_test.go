@@ -8,8 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"os"
-	osexec "os/exec"
 	"reflect"
 	"strconv"
 	"sync"
@@ -262,24 +260,7 @@ func TestPortableJavaRandomGeneratorZigguratTableIntegrity(t *testing.T) {
 }
 
 func TestPortableJavaRandomGeneratorDistributionsOfficialJARDifferential(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for RandomGenerator distribution verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSleep21JARSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSleep21JARSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java, err = osexec.LookPath("java")
-		if err != nil {
-			t.Skipf("official JAR supplied but java is unavailable: %v", err)
-		}
-	}
+	jar, java := officialSleepDifferentialTools(t)
 
 	source := `
 $r = [new Random: 0L];
@@ -301,7 +282,7 @@ $r = [new Random: 112815L];
 $g = [$r nextGaussian: 0.0, 1.0]; $i = [$r nextInt];
 println("g112815|$g|$i");
 `
-	command := osexec.Command(java, "-Dfile.encoding=UTF-8", "-jar", jar, "-e", source)
+	command := officialSleepJavaCommand(java, "-Dfile.encoding=UTF-8", "-jar", jar, "-e", source)
 	want, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep RandomGenerator probe: %v\n%s", err, want)

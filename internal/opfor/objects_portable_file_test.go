@@ -3,11 +3,9 @@ package opfor
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"os"
-	osexec "os/exec"
 	"path/filepath"
 	"reflect"
 	goruntime "runtime"
@@ -906,25 +904,7 @@ return @(
 }
 
 func TestPortableJavaFileEmptyPathOfficialJDKDifferential(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for empty java.io.File differential verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	const officialSHA256 = "0ddde5e9e8d8d8d334d071b1f887c379f5d0be9b190566f05365997b3e375ff1"
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java, err = osexec.LookPath("java")
-		if err != nil {
-			t.Skipf("official JAR supplied but java is unavailable: %v", err)
-		}
-	}
+	jar, java := officialSleepDifferentialTools(t)
 
 	goRoot, javaRoot := t.TempDir(), t.TempDir()
 	for _, root := range []string{goRoot, javaRoot} {
@@ -941,7 +921,7 @@ func TestPortableJavaFileEmptyPathOfficialJDKDifferential(t *testing.T) {
 	if _, err := runtime.Eval(context.Background(), "portable-java-file-empty-probe.sl", portableJavaFileEmptyProbeSource); err != nil {
 		t.Fatalf("pure-Go empty File probe: %v\n%s", err, goOutput.String())
 	}
-	command := osexec.Command(java, "-jar", jar, "-e", portableJavaFileEmptyProbeSource)
+	command := officialSleepJavaCommand(java, "-jar", jar, "-e", portableJavaFileEmptyProbeSource)
 	command.Dir = javaRoot
 	javaOutput, err := command.CombinedOutput()
 	if err != nil {
@@ -1043,32 +1023,14 @@ return @(
 // through OPFOR and the hash-pinned official Sleep JAR. The latter delegates
 // these object expressions to the active JDK's java.io.File implementation.
 func TestPortableJavaFileOfficialJDKDifferential(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for java.io.File differential verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	const officialSHA256 = "0ddde5e9e8d8d8d334d071b1f887c379f5d0be9b190566f05365997b3e375ff1"
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		java, err = osexec.LookPath("java")
-		if err != nil {
-			t.Skipf("official JAR supplied but java is unavailable: %v", err)
-		}
-	}
+	jar, java := officialSleepDifferentialTools(t)
 
 	goRoot := t.TempDir()
 	javaRoot := t.TempDir()
 	preparePortableJavaFileFixture(t, goRoot)
 	preparePortableJavaFileFixture(t, javaRoot)
 	goOutput := runPureGoJavaFileProbe(t, goRoot)
-	command := osexec.Command(java, "-jar", jar, "-e", portableJavaFileProbeSource(javaRoot))
+	command := officialSleepJavaCommand(java, "-jar", jar, "-e", portableJavaFileProbeSource(javaRoot))
 	javaOutput, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep java.io.File probe: %v\n%s", err, javaOutput)

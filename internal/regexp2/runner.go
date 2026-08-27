@@ -22,6 +22,7 @@ type runner struct {
 
 	runtext    []rune // text to search
 	runtextpos int    // current position in text
+	runtextbeg int    // lower bound for reverse consumption in a bounded probe
 	runtextend int
 
 	// The backtracking stack.  Opcodes use this to store data regarding
@@ -88,7 +89,7 @@ func (re *Regexp) run(quick bool, textstart int, input []rune) (*Match, error) {
 }
 
 func (re *Regexp) runContext(ctx context.Context, quick bool, textstart int, input []rune) (*Match, error) {
-	return re.runWithGraphemeStartContext(ctx, quick, textstart, 0, input)
+	return re.runWithBoundsContext(ctx, quick, textstart, 0, 0, input)
 }
 
 func (re *Regexp) runWithGraphemeStart(quick bool, textstart, graphemeStart int, input []rune) (*Match, error) {
@@ -96,6 +97,10 @@ func (re *Regexp) runWithGraphemeStart(quick bool, textstart, graphemeStart int,
 }
 
 func (re *Regexp) runWithGraphemeStartContext(ctx context.Context, quick bool, textstart, graphemeStart int, input []rune) (*Match, error) {
+	return re.runWithBoundsContext(ctx, quick, textstart, 0, graphemeStart, input)
+}
+
+func (re *Regexp) runWithBoundsContext(ctx context.Context, quick bool, textstart, reverseFloor, graphemeStart int, input []rune) (*Match, error) {
 
 	// get a cached runner
 	runner := re.getRunner()
@@ -109,7 +114,7 @@ func (re *Regexp) runWithGraphemeStartContext(ctx context.Context, quick bool, t
 		}
 	}
 
-	return runner.scan(ctx, input, textstart, graphemeStart, quick, re.MatchTimeout)
+	return runner.scan(ctx, input, textstart, reverseFloor, graphemeStart, quick, re.MatchTimeout)
 }
 
 // Scans the string to find the first match. Uses the Match object
@@ -122,7 +127,7 @@ func (re *Regexp) runWithGraphemeStartContext(ctx context.Context, quick bool, t
 // The optimizer can compute a set of candidate starting characters,
 // and we could use a separate method Skip() that will quickly scan past
 // any characters that we know can't match.
-func (r *runner) scan(ctx context.Context, rt []rune, textstart, graphemeStart int, quick bool, timeout time.Duration) (*Match, error) {
+func (r *runner) scan(ctx context.Context, rt []rune, textstart, reverseFloor, graphemeStart int, quick bool, timeout time.Duration) (*Match, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -132,6 +137,7 @@ func (r *runner) scan(ctx context.Context, rt []rune, textstart, graphemeStart i
 	r.ignoreTimeout = (time.Duration(math.MaxInt64) == timeout)
 	r.runtextstart = textstart
 	r.runtext = rt
+	r.runtextbeg = reverseFloor
 	r.runtextend = len(rt)
 	r.rungrapheme = r.rungrapheme[:0]
 	r.rungraphemeFull = r.rungraphemeFull[:0]
@@ -554,28 +560,28 @@ func (r *runner) execute() error {
 			continue
 
 		case syntax.Boundary:
-			if !r.isBoundary(r.textPos(), 0, r.runtextend) {
+			if !r.isBoundary(r.textPos(), r.runtextbeg, r.runtextend) {
 				break
 			}
 			r.advance(0)
 			continue
 
 		case syntax.Nonboundary:
-			if r.isBoundary(r.textPos(), 0, r.runtextend) {
+			if r.isBoundary(r.textPos(), r.runtextbeg, r.runtextend) {
 				break
 			}
 			r.advance(0)
 			continue
 
 		case syntax.ECMABoundary:
-			if !r.isECMABoundary(r.textPos(), 0, r.runtextend) {
+			if !r.isECMABoundary(r.textPos(), r.runtextbeg, r.runtextend) {
 				break
 			}
 			r.advance(0)
 			continue
 
 		case syntax.NonECMABoundary:
-			if r.isECMABoundary(r.textPos(), 0, r.runtextend) {
+			if r.isECMABoundary(r.textPos(), r.runtextbeg, r.runtextend) {
 				break
 			}
 			r.advance(0)
@@ -1213,7 +1219,7 @@ func (r *runner) bump() int {
 
 func (r *runner) forwardchars() int {
 	if r.rightToLeft {
-		return r.runtextpos
+		return r.runtextpos - r.runtextbeg
 	}
 	return r.runtextend - r.runtextpos
 }
@@ -1249,7 +1255,7 @@ func (r *runner) runematch(str []rune) bool {
 
 		pos = r.runtextpos + c
 	} else {
-		if r.runtextpos-0 < c {
+		if r.runtextpos-r.runtextbeg < c {
 			return false
 		}
 
@@ -1283,7 +1289,7 @@ func (r *runner) refmatch(index, len int) bool {
 
 		pos = r.runtextpos + len
 	} else {
-		if r.runtextpos-0 < len {
+		if r.runtextpos-r.runtextbeg < len {
 			return false
 		}
 

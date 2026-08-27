@@ -276,6 +276,26 @@ func taintedArgumentValues(arguments []Argument) []Value {
 	return values
 }
 
+// taintedArguments returns the tainted values reachable from arguments only
+// when this runtime has taint tracking enabled. Keep the mode check outside
+// taintedArgumentValues so the default runtime never recursively walks array
+// or hash arguments merely to discover that propagation is disabled.
+func (r *Runtime) taintedArguments(arguments []Argument) []Value {
+	if r == nil || !r.taintMode {
+		return nil
+	}
+	return taintedArgumentValues(arguments)
+}
+
+// taintedValues returns the tainted values reachable from values only when
+// this runtime has taint tracking enabled.
+func (r *Runtime) taintedValues(values ...Value) []Value {
+	if r == nil || !r.taintMode {
+		return nil
+	}
+	return taintedValues(values...)
+}
+
 func describeTaintedValues(values []Value) string {
 	parts := make([]string, len(values))
 	for index, value := range values {
@@ -314,6 +334,9 @@ func (r *Runtime) rejectTaintedCall(ctx context.Context, name string, arguments 
 }
 
 func (r *Runtime) permeateResult(ctx context.Context, result Value, arguments []Argument, span Span) Value {
+	if r == nil || !r.taintMode {
+		return result
+	}
 	return r.permeateResultFrom(ctx, result, taintedArgumentValues(arguments), span)
 }
 

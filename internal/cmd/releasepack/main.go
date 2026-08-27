@@ -3,7 +3,7 @@
 // It is an internal release-engineering command rather than a second shipped
 // binary. Run it from the repository root with:
 //
-//	go run ./internal/cmd/releasepack -version v0.1.0-alpha.1 -out dist
+//	go run ./internal/cmd/releasepack -version v0.1.0-alpha.2 -out dist
 package main
 
 import (

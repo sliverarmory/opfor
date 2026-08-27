@@ -3,7 +3,6 @@ package opfor
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -215,7 +214,7 @@ func TestSleepReadNativeFunctionCallbackOfficialJARDifferential(t *testing.T) {
 	if err := os.WriteFile(path, []byte(sleepReadNativeCallbackProbe), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	want, err := osexec.Command(java, "-jar", jar, path).CombinedOutput()
+	want, err := officialSleepJavaCommand(java, "-jar", jar, path).CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep read callback probe: %v\n%s", err, want)
 	}
@@ -818,33 +817,8 @@ sub start_binary {
 `
 
 func TestSleepReadPinnedJARDifferential(t *testing.T) {
-	jar := os.Getenv("OPFOR_SLEEP_JAR")
-	if jar == "" {
-		t.Skip("set OPFOR_SLEEP_JAR to the official Sleep 2.1 JAR for asynchronous read differential verification")
-	}
-	jarBytes, err := os.ReadFile(jar)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := fmt.Sprintf("%x", sha256.Sum256(jarBytes)); got != officialSleep21JARSHA256 {
-		t.Fatalf("Sleep JAR SHA-256 = %s, want %s", got, officialSleep21JARSHA256)
-	}
-	java := os.Getenv("OPFOR_JAVA")
-	if java == "" {
-		var lookupErr error
-		java, lookupErr = osexec.LookPath("java")
-		if lookupErr != nil {
-			t.Skipf("java unavailable: %v", lookupErr)
-		}
-	}
-	javac := filepath.Join(filepath.Dir(java), "javac")
-	if _, statErr := os.Stat(javac); statErr != nil {
-		var lookupErr error
-		javac, lookupErr = osexec.LookPath("javac")
-		if lookupErr != nil {
-			t.Skipf("javac unavailable: %v", lookupErr)
-		}
-	}
+	jar, java := officialSleepDifferentialTools(t)
+	javac := officialSleepJavaCompiler(t, java)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	absoluteJar, err := filepath.Abs(jar)
@@ -898,7 +872,7 @@ public final class SleepReadHarness {
 		t.Fatalf("compile official Sleep harness: %v\n%s", err, compileOutput)
 	}
 	classPath := harnessDirectory + string(os.PathListSeparator) + jar
-	reference, err := osexec.CommandContext(ctx, java, "-Dfile.encoding=UTF-8", "-cp", classPath, "SleepReadHarness").CombinedOutput()
+	reference, err := officialSleepJavaCommandContext(ctx, java, "-Dfile.encoding=UTF-8", "-cp", classPath, "SleepReadHarness").CombinedOutput()
 	if err != nil {
 		t.Fatalf("official Sleep probe: %v\n%s", err, reference)
 	}

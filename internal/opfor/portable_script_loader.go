@@ -32,6 +32,7 @@ type portableScriptLoader struct {
 	disableConversions bool
 	charset            string
 	charsetSet         bool
+	globalCache        bool
 	closed             bool
 	closeDone          chan struct{}
 	closeErr           error
@@ -413,18 +414,22 @@ func (loader *portableScriptLoader) invoke(ctx context.Context, invocation Objec
 		if len(invocation.Arguments) != 2 {
 			return portableNoMatchingMethod(invocation, "sleep.runtime.ScriptLoader"), true, nil
 		}
-		// OPFOR deliberately has no parsed-Block cache: every source compile is
-		// fresh. A touch therefore already has its cache-disabled Sleep meaning.
+		if loader.runtime.scriptLoaderCache != nil {
+			loader.runtime.scriptLoaderCache.touch(invocation.Arg(0).String())
+		}
 		return Null(), true, nil
 
 	case "setGlobalCache":
 		if len(invocation.Arguments) != 1 {
 			return portableNoMatchingMethod(invocation, "sleep.runtime.ScriptLoader"), true, nil
 		}
-		if invocation.Arg(0).Truth() {
+		enabled := invocation.Arg(0).Truth()
+		if enabled && loader.runtime.scriptLoaderCache == nil {
 			return Null(), true, portableScriptLoaderUnsupported("global parsed-Block caches")
 		}
-		// The cache starts and remains disabled, matching setGlobalCache(false).
+		loader.mu.Lock()
+		loader.globalCache = enabled
+		loader.mu.Unlock()
 		return Null(), true, nil
 
 	case "setCharsetConversion":
@@ -657,7 +662,7 @@ func (loader *portableScriptLoader) loadScript(ctx context.Context, invocation O
 		if block, ok := portableCompiledBlockValue(invocation.Arg(1)); ok {
 			program = block.program
 		} else if referenced && invocation.Arg(1).Kind() == KindString {
-			program, err = loader.runtime.CompileString(name, invocation.Arg(1).String())
+			program, err = loader.compileString(name, invocation.Arg(1).String())
 		} else if referenced {
 			stream, ok := portableInputStreamValue(invocation.Arg(1))
 			if !ok {
@@ -701,7 +706,7 @@ func (loader *portableScriptLoader) compileScript(ctx context.Context, invocatio
 	} else if len(invocation.Arguments) == 1 {
 		program, _, err = loader.compileFile(ctx, invocation, name)
 	} else if invocation.Arg(1).Kind() == KindString {
-		program, err = loader.runtime.CompileString(name, invocation.Arg(1).String())
+		program, err = loader.compileString(name, invocation.Arg(1).String())
 	} else if stream, ok := portableInputStreamValue(invocation.Arg(1)); ok {
 		program, err = loader.compilePortableScriptStream(ctx, name, stream)
 	} else {
@@ -770,8 +775,36 @@ func (loader *portableScriptLoader) compileFile(ctx context.Context, invocation 
 	if loader.runtime.defaultFileResolver != nil {
 		source.Name = filepath.ToSlash(loader.runtime.defaultFileResolver.resolvePath(name))
 	}
-	program, err := loader.runtime.compileReservedSource(source)
+	program, err := loader.compileSource(source)
 	return program, resolved.modificationPath, err
+}
+
+func (loader *portableScriptLoader) compileString(name, code string) (*Program, error) {
+	if err := loader.runtime.reserveResource(resourceSourceBytes, uint64(len(code))); err != nil {
+		return nil, err
+	}
+	return loader.compileSource(NewSource(name, []byte(code)))
+}
+
+func (loader *portableScriptLoader) compileSource(source Source) (*Program, error) {
+	if loader == nil || loader.runtime == nil {
+		return nil, errors.New("java.lang.IllegalStateException: ScriptLoader has no runtime")
+	}
+	loader.mu.Lock()
+	enabled := loader.globalCache
+	charset := loader.charset
+	if !loader.charsetSet {
+		charset = ""
+	}
+	conversion := !loader.disableConversions
+	loader.mu.Unlock()
+	cache := loader.runtime.scriptLoaderCache
+	if !enabled || cache == nil {
+		return loader.runtime.compileReservedSource(source)
+	}
+	return cache.compile(source.Name, charset, conversion, loader.runtime.scriptLoaderEnvironmentFingerprint(), source.Data, func() (*Program, error) {
+		return loader.runtime.compileReservedSource(source)
+	})
 }
 
 func (loader *portableScriptLoader) registerScript(invocation ObjectInvocation, name string, program *Program, modificationPath string, referenced bool, shared *portableScriptSharedEnvironment) Value {
@@ -1198,7 +1231,7 @@ func (loader *portableScriptLoader) compilePortableScriptStream(ctx context.Cont
 		}
 		start = end + 1
 	}
-	return loader.runtime.compileReservedSource(NewSource(name, []byte(code.String())))
+	return loader.compileSource(NewSource(name, []byte(code.String())))
 }
 
 // decodeSource applies the source-stream character policy configured on this
@@ -2076,6 +2109,9 @@ func (instance *portableScriptInstance) newChildRuntime(warnings io.Writer) (*Ru
 		withRuntimeResourceAccount(parent.resources),
 		WithIncludeCyclePolicy(parent.includeCycles),
 		WithClock(parent.clock),
+	}
+	if parent.scriptLoaderCache != nil {
+		options = append(options, WithScriptLoaderCache(parent.scriptLoaderCache))
 	}
 	options = append(options, parent.scriptLoaderProfileOptions()...)
 	options = append(options, WithTaintMode(parent.taintMode))
