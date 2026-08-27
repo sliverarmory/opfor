@@ -142,7 +142,7 @@ jobs:
       LC_ALL: C.UTF-8
       TZ: UTC
       OPFOR_REQUIRE_SLEEP_JAR: "1"
-      OPFOR_SLEEP_JAR: ${{ runner.temp }}/sleep.jar
+      OPFOR_SLEEP_JAR: /tmp/opfor-official-sleep-2.1.jar
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
