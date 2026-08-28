@@ -1359,18 +1359,23 @@ type Argument = opforimpl.Argument
 // Array is Sleep's mutable, reference-identity array container.
 type Array = opforimpl.Array
 
+// BOFPackByteOrder selects the byte order used by bof_pack for field-length
+// headers and numeric values. It does not affect the UTF-16LE code units in Z
+// payloads or add an outer argument-buffer length prefix.
+type BOFPackByteOrder = opforimpl.BOFPackByteOrder
+
 // BeaconStringEncoder converts a Sleep string for the documented bof_pack z
 // format. BeaconID identifies the target session whose configured character
 // set an importer may consult. Text retains OPFOR's Value representation so an
 // adapter can distinguish binary provenance when its policy requires it.
 //
 // The encoder returns only the encoded text bytes. OPFOR treats the first NUL
-// byte as the C-string terminator, then appends the canonical NUL and length
-// prefix. The pure-Go default is UTF-8. Calls are synchronous and may occur
-// concurrently. Implementations should observe ctx and must not retain it after
-// returning. OPFOR copies the returned byte contents into the BOF argument
-// buffer before EncodeBeaconString returns to script code and does not retain
-// the returned slice.
+// byte as the C-string terminator, then appends the canonical NUL and writes the
+// field length in the runtime-selected byte order. The pure-Go default is
+// UTF-8. Calls are synchronous and may occur concurrently. Implementations
+// should observe ctx and must not retain it after returning. OPFOR copies the
+// returned byte contents into the BOF argument buffer before EncodeBeaconString
+// returns to script code and does not retain the returned slice.
 type BeaconStringEncoder = opforimpl.BeaconStringEncoder
 
 // BeaconStringEncoderFunc adapts a function to BeaconStringEncoder.
@@ -2507,6 +2512,12 @@ const (
 	AggressorVPNTAPCreate = opforimpl.AggressorVPNTAPCreate
 	// AggressorVPNTAPDelete identifies vpn_tap_delete.
 	AggressorVPNTAPDelete = opforimpl.AggressorVPNTAPDelete
+	// BOFPackBigEndian preserves the Cobalt-compatible bof_pack format and is
+	// the default.
+	BOFPackBigEndian = opforimpl.BOFPackBigEndian
+	// BOFPackLittleEndian selects little-endian field lengths and numeric
+	// values for importers whose BOF runner uses that convention.
+	BOFPackLittleEndian = opforimpl.BOFPackLittleEndian
 	// BindingAlias identifies a Beacon console alias registration.
 	BindingAlias = opforimpl.BindingAlias
 	// BindingCommand identifies a script-console command registration.
@@ -3040,6 +3051,13 @@ func WithAggressorTeamServerRPCProvider(provider AggressorTeamServerRPCProvider)
 // WithFunction overrides retain precedence over the native wrappers.
 func WithAggressorVPNProvider(provider AggressorVPNProvider) Option {
 	return opforimpl.WithAggressorVPNProvider(provider)
+}
+
+// WithBOFPackByteOrder selects bof_pack's field-header and numeric byte order.
+// The default is BOFPackBigEndian. OPFOR never adds an outer buffer-length
+// prefix; importers which require one remain responsible for adding it.
+func WithBOFPackByteOrder(order BOFPackByteOrder) Option {
+	return opforimpl.WithBOFPackByteOrder(order)
 }
 
 // WithBeaconStringEncoder replaces bof_pack's z-string encoder. This is the

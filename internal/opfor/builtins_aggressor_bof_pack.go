@@ -59,6 +59,7 @@ func (r *Runtime) builtinAggressorBOFPack(ctx context.Context, invocation Invoca
 	}
 
 	beaconID := arguments[0]
+	byteOrder := r.bofPackBinaryByteOrder()
 	var output bytes.Buffer
 	writer := newRuntimeOutputWriter(runtimeOutputAccountFor(ctx, r), &output)
 	for index, format := range formats {
@@ -82,7 +83,7 @@ func (r *Runtime) builtinAggressorBOFPack(ctx context.Context, invocation Invoca
 				return Null(), err
 			}
 			var header [4]byte
-			binary.BigEndian.PutUint32(header[:], length)
+			byteOrder.PutUint32(header[:], length)
 			if err := sleepWriteFormattedBytes(ctx, writer, header[:]); err != nil {
 				return Null(), err
 			}
@@ -103,14 +104,14 @@ func (r *Runtime) builtinAggressorBOFPack(ctx context.Context, invocation Invoca
 
 		case 'i':
 			var data [4]byte
-			binary.BigEndian.PutUint32(data[:], uint32(sleepInt32(value)))
+			byteOrder.PutUint32(data[:], uint32(sleepInt32(value)))
 			if err := sleepWriteFormattedBytes(ctx, writer, data[:]); err != nil {
 				return Null(), err
 			}
 
 		case 's':
 			var data [2]byte
-			binary.BigEndian.PutUint16(data[:], uint16(sleepInt32(value)))
+			byteOrder.PutUint16(data[:], uint16(sleepInt32(value)))
 			if err := sleepWriteFormattedBytes(ctx, writer, data[:]); err != nil {
 				return Null(), err
 			}
@@ -153,7 +154,7 @@ func (r *Runtime) builtinAggressorBOFPack(ctx context.Context, invocation Invoca
 				return Null(), err
 			}
 			var header [4]byte
-			binary.BigEndian.PutUint32(header[:], length)
+			byteOrder.PutUint32(header[:], length)
 			if err := sleepWriteFormattedBytes(ctx, writer, header[:]); err != nil {
 				return Null(), err
 			}
@@ -181,7 +182,7 @@ func (r *Runtime) builtinAggressorBOFPack(ctx context.Context, invocation Invoca
 				return Null(), err
 			}
 			var header [4]byte
-			binary.BigEndian.PutUint32(header[:], length)
+			byteOrder.PutUint32(header[:], length)
 			if err := sleepWriteFormattedBytes(ctx, writer, header[:]); err != nil {
 				return Null(), err
 			}
@@ -210,6 +211,13 @@ func (r *Runtime) builtinAggressorBOFPack(ctx context.Context, invocation Invoca
 		return Null(), err
 	}
 	return BinaryString(output.Bytes()), nil
+}
+
+func (r *Runtime) bofPackBinaryByteOrder() binary.ByteOrder {
+	if r != nil && r.bofPackByteOrder == BOFPackLittleEndian {
+		return binary.LittleEndian
+	}
+	return binary.BigEndian
 }
 
 // The official public BofData packer accepts C strings and measures them with

@@ -6,6 +6,7 @@ package opfor
 // integration here cannot silently omit it from the child profile clone.
 type aggressorIntegrationConfig struct {
 	beaconEncoder                     BeaconStringEncoder
+	bofPackByteOrder                  BOFPackByteOrder
 	eventDispatcher                   AggressorEventDispatcher
 	aggressorBeaconTranscriptSink     AggressorBeaconTranscriptSink
 	aggressorBeaconActionProvider     AggressorBeaconActionProvider
@@ -47,8 +48,9 @@ type aggressorConfig struct {
 func defaultAggressorConfig() aggressorConfig {
 	return aggressorConfig{
 		aggressorIntegrationConfig: aggressorIntegrationConfig{
-			beaconEncoder:   utf8BeaconStringEncoder{},
-			eventDispatcher: synchronousAggressorEventDispatcher{},
+			beaconEncoder:    utf8BeaconStringEncoder{},
+			bofPackByteOrder: BOFPackBigEndian,
+			eventDispatcher:  synchronousAggressorEventDispatcher{},
 		},
 	}
 }

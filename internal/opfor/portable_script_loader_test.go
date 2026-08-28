@@ -448,7 +448,7 @@ return [$child runScript];
 	}
 }
 
-func TestPortableScriptLoaderInheritsAggressorEncodingAndDispatchBoundaries(t *testing.T) {
+func TestPortableScriptLoaderInheritsAggressorEncodingByteOrderAndDispatchBoundaries(t *testing.T) {
 	directory := t.TempDir()
 	childPath := filepath.Join(directory, "aggressor-boundary-child.cna")
 	childSource := `
@@ -473,6 +473,7 @@ return [$child runScript];
 	encoderCalls := 0
 	dispatcherCalls := 0
 	runtimeInstance, err := New(
+		WithBOFPackByteOrder(BOFPackLittleEndian),
 		WithBeaconStringEncoder(BeaconStringEncoderFunc(func(_ context.Context, beaconID Value, text Value) ([]byte, error) {
 			encoderCalls++
 			if beaconID.String() != "child-beacon" || text.String() != "child-text" {
@@ -495,7 +496,7 @@ return [$child runScript];
 		t.Fatal(err)
 	}
 	values := mustArrayValues(t, result)
-	wantPacked := []byte{0, 0, 0, 8, 'e', 'n', 'c', 'o', 'd', 'e', 'd', 0}
+	wantPacked := []byte{8, 0, 0, 0, 'e', 'n', 'c', 'o', 'd', 'e', 'd', 0}
 	packed, ok := values[0].Bytes()
 	if !ok || !values[0].IsBinaryString() || !bytes.Equal(packed, wantPacked) {
 		t.Fatalf("child bof_pack = %x/binary=%v, want %x/binary", packed, values[0].IsBinaryString(), wantPacked)

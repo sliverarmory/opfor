@@ -3,6 +3,7 @@ package opfor
 import (
 	"context"
 	"errors"
+	"fmt"
 )
 
 // AggressorBeaconTranscriptKind identifies one of Aggressor's Beacon
@@ -110,12 +111,12 @@ func WithAggressorBeaconTranscriptSink(sink AggressorBeaconTranscriptSink) Optio
 // adapter can distinguish binary provenance when its policy requires it.
 //
 // The encoder returns only the encoded text bytes. OPFOR treats the first NUL
-// byte as the C-string terminator, then appends the canonical NUL and length
-// prefix. The pure-Go default is UTF-8. Calls are synchronous and may occur
-// concurrently. Implementations should observe ctx and must not retain it after
-// returning. OPFOR copies the returned byte contents into the BOF argument
-// buffer before EncodeBeaconString returns to script code and does not retain
-// the returned slice.
+// byte as the C-string terminator, then appends the canonical NUL and writes the
+// field length in the runtime-selected byte order. The pure-Go default is
+// UTF-8. Calls are synchronous and may occur concurrently. Implementations
+// should observe ctx and must not retain it after returning. OPFOR copies the
+// returned byte contents into the BOF argument buffer before EncodeBeaconString
+// returns to script code and does not retain the returned slice.
 type BeaconStringEncoder interface {
 	EncodeBeaconString(context.Context, Value, Value) ([]byte, error)
 }
@@ -133,6 +134,35 @@ func (function BeaconStringEncoderFunc) EncodeBeaconString(
 		return nil, errors.New("opfor: Beacon string encoder is nil")
 	}
 	return function(ctx, beaconID, text)
+}
+
+// BOFPackByteOrder selects the byte order used by bof_pack for field-length
+// headers and numeric values. It does not affect the UTF-16LE code units in Z
+// payloads or add an outer argument-buffer length prefix.
+type BOFPackByteOrder uint8
+
+const (
+	// BOFPackBigEndian preserves the Cobalt-compatible bof_pack format and is
+	// the default.
+	BOFPackBigEndian BOFPackByteOrder = iota
+	// BOFPackLittleEndian selects little-endian field lengths and numeric
+	// values for importers whose BOF runner uses that convention.
+	BOFPackLittleEndian
+)
+
+// WithBOFPackByteOrder selects bof_pack's field-header and numeric byte order.
+// The default is BOFPackBigEndian. OPFOR never adds an outer buffer-length
+// prefix; importers which require one remain responsible for adding it.
+func WithBOFPackByteOrder(order BOFPackByteOrder) Option {
+	return func(config *runtimeConfig) error {
+		switch order {
+		case BOFPackBigEndian, BOFPackLittleEndian:
+			config.bofPackByteOrder = order
+			return nil
+		default:
+			return fmt.Errorf("opfor: invalid BOF pack byte order %d", order)
+		}
+	}
 }
 
 // WithBeaconStringEncoder replaces bof_pack's z-string encoder. This is the
