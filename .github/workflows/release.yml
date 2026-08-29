@@ -1,0 +1,302 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+      - "!v*-*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing stable version tag to publish (for example, v0.0.1)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify stable tag on main
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      tag_object: ${{ steps.release.outputs.tag_object }}
+      commit: ${{ steps.release.outputs.commit }}
+    steps:
+      - name: Check out repository history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Resolve and validate release tag
+        id: release
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        shell: bash
+        run: |
+          if [[ ! "${RELEASE_TAG}" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+            echo "not a strict stable version tag: ${RELEASE_TAG}" >&2
+            exit 1
+          fi
+
+          git fetch --no-tags origin "+refs/heads/main:refs/remotes/origin/main"
+          git fetch --force --no-tags origin "refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}"
+          tag_type="$(git cat-file -t "refs/tags/${RELEASE_TAG}")"
+          tag_object="$(git rev-parse "refs/tags/${RELEASE_TAG}")"
+          tag_commit="$(git rev-parse "refs/tags/${RELEASE_TAG}^{commit}")"
+
+          if [[ "${tag_type}" != "tag" ]]; then
+            echo "release tag ${RELEASE_TAG} must be annotated" >&2
+            exit 1
+          fi
+
+          if ! git merge-base --is-ancestor "${tag_commit}" refs/remotes/origin/main; then
+            echo "tag ${RELEASE_TAG} does not point to a commit on main" >&2
+            exit 1
+          fi
+
+          echo "tag=${RELEASE_TAG}" >> "${GITHUB_OUTPUT}"
+          echo "tag_object=${tag_object}" >> "${GITHUB_OUTPUT}"
+          echo "commit=${tag_commit}" >> "${GITHUB_OUTPUT}"
+          {
+            echo "### Release ${RELEASE_TAG}"
+            echo
+            echo "Tag commit: \`${tag_commit}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+  test:
+    name: Test release source
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CGO_ENABLED: 0
+      RELEASE_TAG: ${{ needs.verify.outputs.tag }}
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.verify.outputs.commit }}
+          persist-credentials: false
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Verify modules
+        run: go mod verify
+      - name: Require tag to match source version
+        shell: bash
+        run: test "$(go run -mod=readonly ./cmd/opfor version)" = "opfor ${RELEASE_TAG}"
+      - name: Test
+        run: go test -mod=readonly ./... -count=1 -timeout=300s
+
+  build:
+    name: Build ${{ matrix.goos }}/${{ matrix.goarch }}
+    needs: [verify, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: darwin
+            goarch: amd64
+            asset: opfor_darwin-amd64
+          - goos: darwin
+            goarch: arm64
+            asset: opfor_darwin-arm64
+          - goos: linux
+            goarch: amd64
+            asset: opfor_linux-amd64
+          - goos: linux
+            goarch: arm64
+            asset: opfor_linux-arm64
+          - goos: windows
+            goarch: amd64
+            asset: opfor_windows-amd64.exe
+          - goos: windows
+            goarch: arm64
+            asset: opfor_windows-arm64.exe
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.verify.outputs.commit }}
+          persist-credentials: false
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Build CLI
+        env:
+          ASSET_NAME: ${{ matrix.asset }}
+          CGO_ENABLED: 0
+          GOAMD64: v1
+          GOARCH: ${{ matrix.goarch }}
+          GOARM64: v8.0
+          GOENV: "off"
+          GOEXPERIMENT: ""
+          GOFIPS140: "off"
+          GOFLAGS: ""
+          GOOS: ${{ matrix.goos }}
+          GOTOOLCHAIN: local
+          GOWORK: "off"
+          RELEASE_TAG: ${{ needs.verify.outputs.tag }}
+        shell: bash
+        run: |
+          mkdir dist
+          go build -trimpath -buildvcs=false -mod=readonly \
+            -ldflags="-s -w -X main.version=${RELEASE_TAG}" \
+            -o "dist/${ASSET_NAME}" ./cmd/opfor
+          test -s "dist/${ASSET_NAME}"
+          go version -m "dist/${ASSET_NAME}"
+      - name: Upload CLI
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/${{ matrix.asset }}
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: true
+
+  publish:
+    name: Publish GitHub Release
+    needs: [verify, test, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      GH_REPO: ${{ github.repository }}
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ needs.verify.outputs.tag }}
+      RELEASE_TAG_OBJECT: ${{ needs.verify.outputs.tag_object }}
+      RELEASE_COMMIT: ${{ needs.verify.outputs.commit }}
+    steps:
+      - name: Download release binaries
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: release-*
+          path: dist
+          merge-multiple: true
+      - name: Generate checksums and verify asset names
+        shell: bash
+        run: |
+          expected=(
+            opfor_darwin-amd64
+            opfor_darwin-arm64
+            opfor_linux-amd64
+            opfor_linux-arm64
+            opfor_windows-amd64.exe
+            opfor_windows-arm64.exe
+          )
+          for asset in "${expected[@]}"; do
+            test -s "dist/${asset}"
+          done
+          find dist -maxdepth 1 -type f -name 'opfor_*' -printf '%f\n' | sort > actual-assets.txt
+          printf '%s\n' "${expected[@]}" | sort > expected-assets.txt
+          diff -u expected-assets.txt actual-assets.txt
+          (cd dist && sha256sum opfor_* > checksums.txt)
+      - name: Publish immutable release assets
+        shell: bash
+        run: |
+          expected=(
+            checksums.txt
+            opfor_darwin-amd64
+            opfor_darwin-arm64
+            opfor_linux-amd64
+            opfor_linux-arm64
+            opfor_windows-amd64.exe
+            opfor_windows-arm64.exe
+          )
+
+          verify_remote_tag() {
+            gh api "repos/${GH_REPO}/git/ref/tags/${RELEASE_TAG}" > remote-ref.json
+            remote_type="$(jq -r '.object.type' remote-ref.json)"
+            remote_object="$(jq -r '.object.sha' remote-ref.json)"
+            if [[ "${remote_type}" != "tag" || "${remote_object}" != "${RELEASE_TAG_OBJECT}" ]]; then
+              echo "remote tag object changed for ${RELEASE_TAG}" >&2
+              exit 1
+            fi
+
+            gh api "repos/${GH_REPO}/git/tags/${RELEASE_TAG_OBJECT}" > remote-tag.json
+            target_type="$(jq -r '.object.type' remote-tag.json)"
+            target_commit="$(jq -r '.object.sha' remote-tag.json)"
+            signature_verified="$(jq -r '.verification.verified' remote-tag.json)"
+            signature_reason="$(jq -r '.verification.reason' remote-tag.json)"
+            if [[ "${target_type}" != "commit" || "${target_commit}" != "${RELEASE_COMMIT}" ]]; then
+              echo "remote tag target changed for ${RELEASE_TAG}" >&2
+              exit 1
+            fi
+            if [[ "${signature_verified}" != "true" || "${signature_reason}" != "valid" ]]; then
+              echo "remote tag signature is not valid for ${RELEASE_TAG}" >&2
+              exit 1
+            fi
+          }
+
+          verify_remote_tag
+
+          if ! gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+            gh release create "${RELEASE_TAG}" \
+              --verify-tag \
+              --title "${RELEASE_TAG}" \
+              --generate-notes \
+              --draft
+            is_draft=true
+          else
+            read -r is_draft is_prerelease < <(
+              gh release view "${RELEASE_TAG}" \
+                --json isDraft,isPrerelease \
+                --jq '[.isDraft, .isPrerelease] | @tsv'
+            )
+            if [[ "${is_prerelease}" != "false" ]]; then
+              echo "existing release ${RELEASE_TAG} is a prerelease" >&2
+              exit 1
+            fi
+          fi
+
+          if [[ "${is_draft}" == "true" ]]; then
+            for artifact in dist/*; do
+              gh release upload "${RELEASE_TAG}" "${artifact}" --clobber
+            done
+          elif [[ "${is_draft}" != "false" ]]; then
+            echo "unknown draft state for ${RELEASE_TAG}: ${is_draft}" >&2
+            exit 1
+          fi
+
+          gh release view "${RELEASE_TAG}" --json assets --jq '.assets[].name' | sort > published-assets.txt
+          printf '%s\n' "${expected[@]}" | sort > expected-assets.txt
+          diff -u expected-assets.txt published-assets.txt
+
+          mkdir verified
+          gh release download "${RELEASE_TAG}" --dir verified
+          for artifact in dist/*; do
+            asset="$(basename "${artifact}")"
+            if ! cmp "${artifact}" "verified/${asset}"; then
+              echo "published release asset differs: ${asset}" >&2
+              sha256sum "${artifact}" "verified/${asset}" >&2
+              exit 1
+            fi
+          done
+          (cd verified && sha256sum --check checksums.txt)
+
+          if [[ "${is_draft}" == "true" ]]; then
+            verify_remote_tag
+            gh release edit "${RELEASE_TAG}" --draft=false
+          fi
+          test "$(gh release view "${RELEASE_TAG}" --json isDraft --jq .isDraft)" = "false"
+
+          release_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${RELEASE_TAG}"
+          {
+            echo "### Published ${RELEASE_TAG}"
+            echo
+            echo "${release_url}"
+          } >> "${GITHUB_STEP_SUMMARY}"
