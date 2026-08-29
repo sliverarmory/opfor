@@ -8,15 +8,16 @@ import (
 	"testing"
 )
 
-func TestInvokeConsoleCommandUsesRawMessageAndQuoteAwareArguments(t *testing.T) {
+func TestInvokeConsoleNilParsedArgumentsUseRawMessageAndQuoteAwareParsing(t *testing.T) {
 	t.Parallel()
 
 	runtime := loadConsoleInvocationFixture(t)
 	raw := "inspect one \"two words\" \"\" c:\\temp 'literal quotes'"
 	value, err := runtime.InvokeConsole(context.Background(), ConsoleInvocation{
-		Kind:     BindingCommand,
-		Name:     "inspect",
-		RawInput: raw,
+		Kind:            BindingCommand,
+		Name:            "inspect",
+		RawInput:        raw,
+		ParsedArguments: nil,
 	})
 	if err != nil {
 		t.Fatalf("InvokeConsole: %v", err)
@@ -29,6 +30,76 @@ func TestInvokeConsoleCommandUsesRawMessageAndQuoteAwareArguments(t *testing.T) 
 	assertConsoleArgumentArray(t, "@_", items[1], []string{"one", "two words", "", `c:\temp`, "'literal", "quotes'"})
 	if got, want := consoleValueStrings(items[2:]), []string{"one", "two words", "", `c:\temp`, "'literal", "quotes'"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("positional arguments = %q, want %q", got, want)
+	}
+}
+
+func TestInvokeConsoleUsesParsedArgumentsExactly(t *testing.T) {
+	t.Parallel()
+
+	parsed := []string{" \t\r\n ", "", `literal "double quote"`}
+	raw := `inspect importer-rendered "unterminated`
+	for _, kind := range []BindingKind{BindingCommand, BindingAlias, BindingSSHAlias} {
+		kind := kind
+		t.Run(string(kind), func(t *testing.T) {
+			t.Parallel()
+			runtime := loadConsoleInvocationFixture(t)
+			value, err := runtime.InvokeConsole(context.Background(), ConsoleInvocation{
+				Kind:            kind,
+				Name:            "inspect",
+				RawInput:        raw,
+				ParsedArguments: parsed,
+				SessionID:       String("session-7"),
+			})
+			if err != nil {
+				t.Fatalf("InvokeConsole: %v", err)
+			}
+
+			items := consoleResultValues(t, value)
+			if got := items[0].String(); got != raw {
+				t.Fatalf("$0 = %q, want exact raw input %q", got, raw)
+			}
+			want := parsed
+			if kind == BindingAlias || kind == BindingSSHAlias {
+				want = append([]string{"session-7"}, parsed...)
+			}
+			assertConsoleArgumentArray(t, "@_", items[1], want)
+			for index, argument := range want {
+				if got := items[index+2].String(); got != argument {
+					t.Fatalf("positional argument %d = %q, want %q", index+1, got, argument)
+				}
+			}
+			for index, value := range items[len(want)+2:] {
+				if !value.IsNull() {
+					t.Fatalf("unused positional argument %d = %s, want $null", len(want)+index+1, value.Describe())
+				}
+			}
+		})
+	}
+}
+
+func TestInvokeConsoleNonNilEmptyParsedArgumentsPreserveEmptyRawInput(t *testing.T) {
+	t.Parallel()
+
+	runtime := loadConsoleInvocationFixture(t)
+	value, err := runtime.InvokeConsole(context.Background(), ConsoleInvocation{
+		Kind:            BindingCommand,
+		Name:            "inspect",
+		RawInput:        "",
+		ParsedArguments: []string{},
+	})
+	if err != nil {
+		t.Fatalf("InvokeConsole: %v", err)
+	}
+
+	items := consoleResultValues(t, value)
+	if got := items[0].String(); got != "" {
+		t.Fatalf("$0 = %q, want exact empty raw input", got)
+	}
+	assertConsoleArgumentArray(t, "@_", items[1], []string{})
+	for index, item := range items[2:] {
+		if !item.IsNull() {
+			t.Fatalf("positional argument %d = %s, want $null", index+1, item.Describe())
+		}
 	}
 }
 

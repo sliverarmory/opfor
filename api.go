@@ -1467,7 +1467,15 @@ type CompileOption = opforimpl.CompileOption
 
 // ConsoleInvocation describes one user-entered command line dispatched to a
 // command, alias, or ssh_alias binding. RawInput is the complete line as typed,
-// including Name. An empty RawInput is treated as Name with no arguments.
+// including Name.
+//
+// ParsedArguments optionally supplies importer-parsed positional arguments,
+// excluding Name. Nil preserves RawInput parsing, including quote and command
+// name validation and the legacy treatment of empty RawInput as Name with no
+// arguments. A non-nil slice is used exactly as supplied; in particular, an
+// empty slice means no arguments, whitespace, empty strings, and literal double
+// quotes are preserved without reparsing RawInput, and RawInput is passed to $0
+// byte-for-byte even when empty.
 //
 // Command callbacks receive the unmodified RawInput in $0 and parsed arguments
 // in $1 onward. Alias and ssh_alias callbacks additionally receive SessionID in
