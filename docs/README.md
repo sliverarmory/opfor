@@ -11,18 +11,25 @@ effects outside the interpreter: application objects, virtual source stores,
 custom functions, and any Cobalt Strike-compatible services it chooses to
 provide.
 
-The project targets Go 1.24 or newer and remains in the `v0.x` alpha series.
+The project targets Go 1.24 or newer and remains in the pre-1.0 `v0.x` series.
 Exported APIs may still change when compatibility evidence requires a better
 contract.
 
-## `v0.1.0-alpha.2` release gates
+## `v0.0.1` release notes
 
-Alpha.2 focuses on official Sleep 2.1 compatibility and interpreter
-performance. Its checkable additions are:
+The initial module release focuses on official Sleep 2.1 compatibility,
+interpreter performance, and importer integration. Its checkable additions
+are:
 
 - one SHA-256-authenticated official-JAR helper for every differential test,
-  with `OPFOR_REQUIRE_SLEEP_JAR=1` hard-failure mode and a required alpha-tag
-  release job;
+  with `OPFOR_REQUIRE_SLEEP_JAR=1` hard-failure mode and a strict differential
+  CI path;
+- importer-selectable `bof_pack` field and numeric byte order through
+  `WithBOFPackByteOrder`, preserving the Cobalt-compatible big-endian default
+  and leaving any outer payload-length prefix to the importer; and
+- exact importer-parsed console tokens through
+  `ConsoleInvocation.ParsedArguments`, while nil retains legacy `RawInput`
+  parsing and every invocation still receives the original `RawInput` as `$0`;
 - `BenchmarkSleep*` workloads for arithmetic, Sleep/native calls, arrays,
   foreach, strings, regex, literals/closures, runtime lifecycle, and the pinned
   upstream corpus, plus `make bench-sleep` and a required CI smoke run;

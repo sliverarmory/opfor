@@ -2654,9 +2654,9 @@ const (
 	VariableProviderRemove         = opforimpl.VariableProviderRemove
 	// Version is the semantic version of this OPFOR source release.
 	//
-	// Alpha releases provide a usable library and CLI while the compatibility
+	// Pre-1.0 releases provide a usable library and CLI while the compatibility
 	// matrix still records known gaps. Importers should not assume API stability
-	// across alpha releases.
+	// across pre-1.0 releases.
 	Version = opforimpl.Version
 )
 
