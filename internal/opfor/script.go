@@ -1284,23 +1284,33 @@ func (r *Runtime) DispatchPopupHook(ctx context.Context, name string, arguments 
 
 // ConsoleInvocation describes one user-entered command line dispatched to a
 // command, alias, or ssh_alias binding. RawInput is the complete line as typed,
-// including Name. An empty RawInput is treated as Name with no arguments.
+// including Name.
+//
+// ParsedArguments optionally supplies importer-parsed positional arguments,
+// excluding Name. Nil preserves RawInput parsing, including quote and command
+// name validation and the legacy treatment of empty RawInput as Name with no
+// arguments. A non-nil slice is used exactly as supplied; in particular, an
+// empty slice means no arguments, whitespace, empty strings, and literal double
+// quotes are preserved without reparsing RawInput, and RawInput is passed to $0
+// byte-for-byte even when empty.
 //
 // Command callbacks receive the unmodified RawInput in $0 and parsed arguments
 // in $1 onward. Alias and ssh_alias callbacks additionally receive SessionID in
 // $1, with parsed arguments beginning at $2. In both cases, @_ contains only
 // the positional values and does not contain $0.
 type ConsoleInvocation struct {
-	Kind      BindingKind
-	Name      string
-	RawInput  string
-	SessionID Value
+	Kind            BindingKind
+	Name            string
+	RawInput        string
+	ParsedArguments []string
+	SessionID       Value
 }
 
 // InvokeConsole invokes the most recently registered command, alias, or
-// ssh_alias callback using Aggressor's console argument contract. Arguments
-// are separated by ASCII whitespace; double quotes group whitespace into one
-// argument and are removed from the positional value. RawInput itself is
+// ssh_alias callback using Aggressor's console argument contract. When
+// ParsedArguments is nil, arguments are separated by ASCII whitespace; double
+// quotes group whitespace into one argument and are removed from the
+// positional value. Otherwise, ParsedArguments is used exactly and RawInput is
 // passed byte-for-byte as Sleep's separate $0 closure message.
 func (r *Runtime) InvokeConsole(ctx context.Context, invocation ConsoleInvocation) (Value, error) {
 	if r == nil {
@@ -1321,26 +1331,30 @@ func (r *Runtime) InvokeConsole(ctx context.Context, invocation ConsoleInvocatio
 	}
 
 	rawInput := invocation.RawInput
-	if rawInput == "" {
-		rawInput = invocation.Name
-	}
-	tokens, err := splitConsoleInput(rawInput)
-	if err != nil {
-		return Null(), err
-	}
-	if len(tokens) == 0 || tokens[0] != invocation.Name {
-		actual := ""
-		if len(tokens) != 0 {
-			actual = tokens[0]
+	parsedArguments := invocation.ParsedArguments
+	if parsedArguments == nil {
+		if rawInput == "" {
+			rawInput = invocation.Name
 		}
-		return Null(), fmt.Errorf("opfor: console input command %q does not match binding %q", actual, invocation.Name)
+		tokens, err := splitConsoleInput(rawInput)
+		if err != nil {
+			return Null(), err
+		}
+		if len(tokens) == 0 || tokens[0] != invocation.Name {
+			actual := ""
+			if len(tokens) != 0 {
+				actual = tokens[0]
+			}
+			return Null(), fmt.Errorf("opfor: console input command %q does not match binding %q", actual, invocation.Name)
+		}
+		parsedArguments = tokens[1:]
 	}
 
-	arguments := make([]Value, 0, len(tokens))
+	arguments := make([]Value, 0, len(parsedArguments)+1)
 	if invocation.Kind == BindingAlias || invocation.Kind == BindingSSHAlias {
 		arguments = append(arguments, invocation.SessionID)
 	}
-	for _, token := range tokens[1:] {
+	for _, token := range parsedArguments {
 		arguments = append(arguments, String(token))
 	}
 

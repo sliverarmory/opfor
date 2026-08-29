@@ -158,8 +158,8 @@ explicitly use it; it is not required for normal embedding, execution, or
 callbacks.
 
 See the [detailed compatibility and embedding reference](docs/README.md) for
-the provider catalog, lifecycle contracts, limits, conformance kit, and exact
-alpha coverage.
+the provider catalog, lifecycle contracts, limits, conformance kit, and current
+compatibility coverage.
 
 ## License
 

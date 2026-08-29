@@ -1359,18 +1359,23 @@ type Argument = opforimpl.Argument
 // Array is Sleep's mutable, reference-identity array container.
 type Array = opforimpl.Array
 
+// BOFPackByteOrder selects the byte order used by bof_pack for field-length
+// headers and numeric values. It does not affect the UTF-16LE code units in Z
+// payloads or add an outer argument-buffer length prefix.
+type BOFPackByteOrder = opforimpl.BOFPackByteOrder
+
 // BeaconStringEncoder converts a Sleep string for the documented bof_pack z
 // format. BeaconID identifies the target session whose configured character
 // set an importer may consult. Text retains OPFOR's Value representation so an
 // adapter can distinguish binary provenance when its policy requires it.
 //
 // The encoder returns only the encoded text bytes. OPFOR treats the first NUL
-// byte as the C-string terminator, then appends the canonical NUL and length
-// prefix. The pure-Go default is UTF-8. Calls are synchronous and may occur
-// concurrently. Implementations should observe ctx and must not retain it after
-// returning. OPFOR copies the returned byte contents into the BOF argument
-// buffer before EncodeBeaconString returns to script code and does not retain
-// the returned slice.
+// byte as the C-string terminator, then appends the canonical NUL and writes the
+// field length in the runtime-selected byte order. The pure-Go default is
+// UTF-8. Calls are synchronous and may occur concurrently. Implementations
+// should observe ctx and must not retain it after returning. OPFOR copies the
+// returned byte contents into the BOF argument buffer before EncodeBeaconString
+// returns to script code and does not retain the returned slice.
 type BeaconStringEncoder = opforimpl.BeaconStringEncoder
 
 // BeaconStringEncoderFunc adapts a function to BeaconStringEncoder.
@@ -1462,7 +1467,15 @@ type CompileOption = opforimpl.CompileOption
 
 // ConsoleInvocation describes one user-entered command line dispatched to a
 // command, alias, or ssh_alias binding. RawInput is the complete line as typed,
-// including Name. An empty RawInput is treated as Name with no arguments.
+// including Name.
+//
+// ParsedArguments optionally supplies importer-parsed positional arguments,
+// excluding Name. Nil preserves RawInput parsing, including quote and command
+// name validation and the legacy treatment of empty RawInput as Name with no
+// arguments. A non-nil slice is used exactly as supplied; in particular, an
+// empty slice means no arguments, whitespace, empty strings, and literal double
+// quotes are preserved without reparsing RawInput, and RawInput is passed to $0
+// byte-for-byte even when empty.
 //
 // Command callbacks receive the unmodified RawInput in $0 and parsed arguments
 // in $1 onward. Alias and ssh_alias callbacks additionally receive SessionID in
@@ -2507,6 +2520,12 @@ const (
 	AggressorVPNTAPCreate = opforimpl.AggressorVPNTAPCreate
 	// AggressorVPNTAPDelete identifies vpn_tap_delete.
 	AggressorVPNTAPDelete = opforimpl.AggressorVPNTAPDelete
+	// BOFPackBigEndian preserves the Cobalt-compatible bof_pack format and is
+	// the default.
+	BOFPackBigEndian = opforimpl.BOFPackBigEndian
+	// BOFPackLittleEndian selects little-endian field lengths and numeric
+	// values for importers whose BOF runner uses that convention.
+	BOFPackLittleEndian = opforimpl.BOFPackLittleEndian
 	// BindingAlias identifies a Beacon console alias registration.
 	BindingAlias = opforimpl.BindingAlias
 	// BindingCommand identifies a script-console command registration.
@@ -2635,9 +2654,9 @@ const (
 	VariableProviderRemove         = opforimpl.VariableProviderRemove
 	// Version is the semantic version of this OPFOR source release.
 	//
-	// Alpha releases provide a usable library and CLI while the compatibility
+	// Pre-1.0 releases provide a usable library and CLI while the compatibility
 	// matrix still records known gaps. Importers should not assume API stability
-	// across alpha releases.
+	// across pre-1.0 releases.
 	Version = opforimpl.Version
 )
 
@@ -3040,6 +3059,13 @@ func WithAggressorTeamServerRPCProvider(provider AggressorTeamServerRPCProvider)
 // WithFunction overrides retain precedence over the native wrappers.
 func WithAggressorVPNProvider(provider AggressorVPNProvider) Option {
 	return opforimpl.WithAggressorVPNProvider(provider)
+}
+
+// WithBOFPackByteOrder selects bof_pack's field-header and numeric byte order.
+// The default is BOFPackBigEndian. OPFOR never adds an outer buffer-length
+// prefix; importers which require one remain responsible for adding it.
+func WithBOFPackByteOrder(order BOFPackByteOrder) Option {
+	return opforimpl.WithBOFPackByteOrder(order)
 }
 
 // WithBeaconStringEncoder replaces bof_pack's z-string encoder. This is the

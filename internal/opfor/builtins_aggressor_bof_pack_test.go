@@ -15,7 +15,7 @@ func newAggressorBOFPackTestRuntime(encoder BeaconStringEncoder) *Runtime {
 	}}
 }
 
-func TestAggressorBOFPackMixedFormatsExactBytesAndNoOuterPrefix(t *testing.T) {
+func TestAggressorBOFPackDefaultBigEndianMixedFormatsExactBytesAndNoOuterPrefix(t *testing.T) {
 	t.Parallel()
 
 	runtime := newAggressorBOFPackTestRuntime(utf8BeaconStringEncoder{})
@@ -47,6 +47,55 @@ func TestAggressorBOFPackMixedFormatsExactBytesAndNoOuterPrefix(t *testing.T) {
 		String("beacon-7"), String("i"), Int(0x10203040))
 	if integerBytes, _ := integerOnly.Bytes(); !bytes.Equal(integerBytes, []byte{0x10, 0x20, 0x30, 0x40}) {
 		t.Fatalf("bof_pack integer-only result = %x, want no-prefix 10203040", integerBytes)
+	}
+}
+
+func TestAggressorBOFPackLittleEndianMixedFormatsExactBytesAndNoOuterPrefix(t *testing.T) {
+	t.Parallel()
+
+	runtimeInstance, err := New(WithBOFPackByteOrder(BOFPackLittleEndian))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = runtimeInstance.Close(context.Background()) })
+
+	got := mustCallAggressorBOFPack(t, runtimeInstance, context.Background(),
+		String("beacon-7"),
+		String("biszZ"),
+		BinaryString([]byte{0x00, 0x80, 0xff}),
+		Int(0x01020304),
+		Int(0x0506),
+		String("Hi"),
+		String("A😀"),
+	)
+	want := []byte{
+		0x03, 0x00, 0x00, 0x00, 0x00, 0x80, 0xff,
+		0x04, 0x03, 0x02, 0x01,
+		0x06, 0x05,
+		0x03, 0x00, 0x00, 0x00, 'H', 'i', 0x00,
+		0x08, 0x00, 0x00, 0x00, 0x41, 0x00, 0x3d, 0xd8, 0x00, 0xde, 0x00, 0x00,
+	}
+	gotBytes, ok := got.Bytes()
+	if !ok || !got.IsBinaryString() || !bytes.Equal(gotBytes, want) {
+		t.Fatalf("little-endian bof_pack mixed result = %x/string=%v/binary=%v, want %x binary string",
+			gotBytes, ok, got.IsBinaryString(), want)
+	}
+
+	// The importer may add its own whole-buffer prefix. Even in little-endian
+	// mode, OPFOR returns only the four-byte packed integer.
+	integerOnly := mustCallAggressorBOFPack(t, runtimeInstance, context.Background(),
+		String("beacon-7"), String("i"), Int(0x10203040))
+	if integerBytes, _ := integerOnly.Bytes(); !bytes.Equal(integerBytes, []byte{0x40, 0x30, 0x20, 0x10}) {
+		t.Fatalf("little-endian bof_pack integer-only result = %x, want no-prefix 40302010", integerBytes)
+	}
+}
+
+func TestWithBOFPackByteOrderRejectsInvalidValue(t *testing.T) {
+	t.Parallel()
+
+	_, err := New(WithBOFPackByteOrder(BOFPackByteOrder(0xff)))
+	if err == nil || !strings.Contains(err.Error(), "invalid BOF pack byte order 255") {
+		t.Fatalf("invalid BOF pack byte order error = %v, want byte-order validation error", err)
 	}
 }
 

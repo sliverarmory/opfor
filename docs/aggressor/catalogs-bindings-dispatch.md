@@ -341,11 +341,19 @@ and payload values in `$1...`/`@_`. Wildcard `on "*"` handlers run afterward;
 they receive the concrete name in both `$0` and positional `$1`, followed by
 the payload.
 
-`InvokeConsole` separates ASCII whitespace and supports double-quoted groups.
-For a `command`, `$0` is the unmodified raw line and parsed arguments begin at
-`$1`. For `alias` and `ssh_alias`, `$0` is still the raw line, the supplied
-session ID is `$1`, and parsed arguments begin at `$2`. `@_` contains only the
-positional values, never `$0`.
+By default, `InvokeConsole` separates ASCII whitespace and supports
+double-quoted groups. Importers which already have positional tokens can set
+`ConsoleInvocation.ParsedArguments`: nil retains that legacy parsing, while a
+non-nil slice is used exactly as supplied, excluding the command `Name`. This
+preserves whitespace, empty arguments, and literal double quotes; a non-nil
+empty slice means no positional arguments. In that form `RawInput` is not
+parsed or validated against `Name` and remains the byte-for-byte `$0` message.
+This includes an empty `RawInput`. Only the legacy nil form replaces empty
+`RawInput` with `Name`.
+
+For a `command`, arguments begin at `$1`. For `alias` and `ssh_alias`, the
+supplied session ID is `$1`, and arguments begin at `$2`. `@_` contains only
+the positional values, never `$0`.
 
 Top-level host entry creates one fresh instruction budget; synchronous nested
 reentry reuses the active budget. Calls honor cancellation and acquire runtime

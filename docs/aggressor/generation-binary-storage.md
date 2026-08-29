@@ -240,7 +240,15 @@ falls back to `Host`; string validation belongs to the typed route.
 OPFOR deliberately does not parse, link, relocate, execute, or guess the
 unpublished extracted-BOF envelope.
 
-### `bof_pack` narrow-string encoding
+### `bof_pack` layout and narrow-string encoding
+
+`WithBOFPackByteOrder` selects the byte order for `b` field lengths, `i` and
+`s` numeric values, and `z` and `Z` field lengths. The default is
+`BOFPackBigEndian`, preserving the Cobalt-compatible format;
+`BOFPackLittleEndian` supports importers such as Sliver's Reflektor path.
+`Z` payload code units remain UTF-16LE in either mode. OPFOR never adds an
+outer argument-buffer length prefix, so an importer whose wire protocol needs
+one must add it after `bof_pack` returns.
 
 Install `BeaconStringEncoder` with `WithBeaconStringEncoder`; the adapter is
 `BeaconStringEncoderFunc` and the method is:
