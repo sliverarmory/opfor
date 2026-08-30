@@ -15,6 +15,14 @@ The project targets Go 1.24 or newer and remains in the pre-1.0 `v0.x` series.
 Exported APIs may still change when compatibility evidence requires a better
 contract.
 
+## `v0.0.2` release notes
+
+This portability release fixes pure-Go Linux builds whose
+`syscall.Statfs_t.Namelen` field is not `int64`. Cross-build coverage now
+includes Linux 386 (`int32`) and s390x (`uint32`) alongside the existing
+amd64 and arm64 (`int64`) rows, preventing architecture-specific type
+regressions in the portable file implementation.
+
 ## `v0.0.1` release notes
 
 The initial module release focuses on official Sleep 2.1 compatibility,

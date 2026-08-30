@@ -117,6 +117,13 @@ jobs:
       matrix:
         goos: [linux, darwin, windows]
         goarch: [amd64, arm64]
+        # Linux syscall.Statfs_t.Namelen is int32 on 386, int64 on the
+        # existing 64-bit rows, and uint32 on s390x.
+        include:
+          - goos: linux
+            goarch: "386"
+          - goos: linux
+            goarch: s390x
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
