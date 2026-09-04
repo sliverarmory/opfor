@@ -99,9 +99,13 @@ func (f CallableFunc) Invoke(ctx context.Context, values ...Value) (Value, error
 // is the Sleep $null value. Scalar values copy by value; arrays, hashes,
 // functions, and objects preserve reference identity.
 type Value struct {
-	kind        Kind
+	kind    Kind
+	tainted bool
+	// Numeric payloads live inline so arithmetic results do not allocate a
+	// boxed Go interface value. Grouping kind and tainted also uses the old
+	// layout's padding, keeping Value the same size on 64-bit platforms.
+	number      uint64
 	data        any
-	tainted     bool
 	stringUnits []uint16
 	stringRaw   []bool
 }
@@ -119,13 +123,13 @@ func Bool(v bool) Value {
 }
 
 // Int returns a Sleep 32-bit integer value.
-func Int(v int32) Value { return Value{kind: KindInt, data: v} }
+func Int(v int32) Value { return Value{kind: KindInt, number: uint64(uint32(v))} }
 
 // Long returns a Sleep 64-bit integer value.
-func Long(v int64) Value { return Value{kind: KindLong, data: v} }
+func Long(v int64) Value { return Value{kind: KindLong, number: uint64(v)} }
 
 // Double returns a Sleep double-precision value.
-func Double(v float64) Value { return Value{kind: KindDouble, data: v} }
+func Double(v float64) Value { return Value{kind: KindDouble, number: math.Float64bits(v)} }
 
 // String returns a textual Sleep string. Valid UTF-8 is mapped to the same
 // UTF-16 code units a Java String would contain. Invalid UTF-8 bytes retain the
@@ -190,11 +194,11 @@ func (v Value) Truth() bool {
 	case KindNull:
 		return false
 	case KindInt:
-		return v.data.(int32) != 0
+		return int32(v.number) != 0
 	case KindLong:
-		return v.data.(int64) != 0
+		return int64(v.number) != 0
 	case KindDouble:
-		return v.data.(float64) != 0
+		return math.Float64frombits(v.number) != 0
 	case KindString:
 		s := v.data.(string)
 		return s != "" && s != "0"
@@ -212,11 +216,11 @@ func (v Value) String() string {
 	case KindNull:
 		return ""
 	case KindInt:
-		return strconv.FormatInt(int64(v.data.(int32)), 10)
+		return strconv.FormatInt(int64(int32(v.number)), 10)
 	case KindLong:
-		return strconv.FormatInt(v.data.(int64), 10)
+		return strconv.FormatInt(int64(v.number), 10)
 	case KindDouble:
-		return formatDouble(v.data.(float64))
+		return formatDouble(math.Float64frombits(v.number))
 	case KindString:
 		return v.data.(string)
 	case KindArray, KindHash:
@@ -271,11 +275,11 @@ func (s *describeState) value(v Value) string {
 	case KindNull:
 		return "$null"
 	case KindInt:
-		return strconv.FormatInt(int64(v.data.(int32)), 10)
+		return strconv.FormatInt(int64(int32(v.number)), 10)
 	case KindLong:
-		return strconv.FormatInt(v.data.(int64), 10) + "L"
+		return strconv.FormatInt(int64(v.number), 10) + "L"
 	case KindDouble:
-		return formatDouble(v.data.(float64))
+		return formatDouble(math.Float64frombits(v.number))
 	case KindString:
 		return "'" + sleepCanonicalString(v) + "'"
 	case KindArray:
@@ -370,11 +374,11 @@ func (s *describeState) hash(hash *Hash) string {
 func (v Value) Int32() int32 {
 	switch v.kind {
 	case KindInt:
-		return v.data.(int32)
+		return int32(v.number)
 	case KindLong:
-		return int32(v.data.(int64))
+		return int32(int64(v.number))
 	case KindDouble:
-		return int32(v.data.(float64))
+		return int32(math.Float64frombits(v.number))
 	case KindString:
 		if parsed, err := strconv.ParseInt(v.data.(string), 0, 32); err == nil {
 			return int32(parsed)
@@ -390,11 +394,11 @@ func (v Value) Int32() int32 {
 func (v Value) Int64() int64 {
 	switch v.kind {
 	case KindInt:
-		return int64(v.data.(int32))
+		return int64(int32(v.number))
 	case KindLong:
-		return v.data.(int64)
+		return int64(v.number)
 	case KindDouble:
-		return int64(v.data.(float64))
+		return int64(math.Float64frombits(v.number))
 	case KindString:
 		if parsed, err := strconv.ParseInt(v.data.(string), 0, 64); err == nil {
 			return parsed
@@ -410,11 +414,11 @@ func (v Value) Int64() int64 {
 func (v Value) Float64() float64 {
 	switch v.kind {
 	case KindInt:
-		return float64(v.data.(int32))
+		return float64(int32(v.number))
 	case KindLong:
-		return float64(v.data.(int64))
+		return float64(int64(v.number))
 	case KindDouble:
-		return v.data.(float64)
+		return math.Float64frombits(v.number)
 	case KindString:
 		parsed, _ := strconv.ParseFloat(v.data.(string), 64)
 		return parsed
@@ -469,11 +473,11 @@ func (v Value) IdentityEqual(other Value) bool {
 	case KindNull:
 		return true
 	case KindInt:
-		return v.data.(int32) == other.data.(int32)
+		return int32(v.number) == int32(other.number)
 	case KindLong:
-		return v.data.(int64) == other.data.(int64)
+		return int64(v.number) == int64(other.number)
 	case KindDouble:
-		return v.data.(float64) == other.data.(float64)
+		return math.Float64frombits(v.number) == math.Float64frombits(other.number)
 	case KindString:
 		return sleepStringValuesEqual(v, other)
 	case KindArray:
@@ -659,7 +663,9 @@ func (a *Array) initializeArray(cells []*Cell) {
 			items: cells,
 			views: make(map[*arrayWindow]struct{}),
 		}
-		window := &arrayWindow{end: len(cells), valid: true, cached: append([]*Cell(nil), cells...)}
+		// The root stays valid across every mutation, so its initial cache can
+		// share the detached storage just as the root append fast path does.
+		window := &arrayWindow{end: len(cells), valid: true, cached: cells}
 		storage.root = window
 		storage.views[window] = struct{}{}
 		a.storage = storage

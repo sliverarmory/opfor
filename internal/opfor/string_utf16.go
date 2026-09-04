@@ -175,7 +175,22 @@ func sleepStringValueFromCanonical(value string) Value {
 	return sleepStringValueFromUnits(units, raw)
 }
 
-func sleepStringLength(value Value) int { return len(sleepStringUnits(value)) }
+func sleepStringLength(value Value) int {
+	value = sleepStringCoercion(value)
+	if value.stringUnits != nil {
+		return len(value.stringUnits)
+	}
+	// Plain text already contains valid UTF-8. Count Java chars directly instead
+	// of allocating a rune slice and an encoded UTF-16 copy just to count them.
+	length := 0
+	for _, character := range value.data.(string) {
+		length++
+		if character > 0xffff {
+			length++
+		}
+	}
+	return length
+}
 
 func sleepStringValueSlice(value Value, start, end int) Value {
 	units := sleepStringUnits(value)
@@ -625,8 +640,15 @@ func sleepStringEqualFold(left, right Value) bool {
 // identity. Binary provenance is intentionally excluded because Java hashes
 // and equality observe only UTF-16 code units.
 func sleepCanonicalString(value Value) string {
-	units := sleepStringUnits(value)
-	return sleepRenderStringUnits(units, make([]bool, len(units)))
+	value = sleepStringCoercion(value)
+	if value.stringUnits == nil {
+		// Ordinary text is already the canonical spelling. Round-tripping through
+		// UTF-16 adds no information and is costly for hash keys and regex inputs.
+		return value.data.(string)
+	}
+	// Explicit units may carry binary provenance or lone surrogates. Render
+	// those exact units without a raw mask; the renderer only reads its inputs.
+	return sleepRenderStringUnits(value.stringUnits, nil)
 }
 
 func sleepStringLowBytes(value Value) []byte {

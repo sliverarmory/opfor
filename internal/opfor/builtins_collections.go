@@ -525,7 +525,7 @@ func sleepIdentityString(value Value) string {
 	if value.Kind() != KindDouble {
 		return value.String()
 	}
-	number := value.data.(float64)
+	number := math.Float64frombits(value.number)
 	switch {
 	case math.IsNaN(number):
 		return "NaN"
@@ -1074,11 +1074,11 @@ func builtinDouble(_ context.Context, invocation Invocation) (Value, error) {
 func sleepInt32(value Value) int32 {
 	switch value.Kind() {
 	case KindInt:
-		return value.data.(int32)
+		return int32(value.number)
 	case KindLong:
-		return int32(value.data.(int64))
+		return int32(int64(value.number))
 	case KindDouble:
-		return int32(value.data.(float64))
+		return int32(math.Float64frombits(value.number))
 	case KindString:
 		parsed, err := strconv.ParseInt(value.data.(string), 10, 32)
 		if err == nil {
@@ -1096,11 +1096,11 @@ func sleepInt32(value Value) int32 {
 func sleepInt64(value Value) int64 {
 	switch value.Kind() {
 	case KindInt:
-		return int64(value.data.(int32))
+		return int64(int32(value.number))
 	case KindLong:
-		return value.data.(int64)
+		return int64(value.number)
 	case KindDouble:
-		return int64(value.data.(float64))
+		return int64(math.Float64frombits(value.number))
 	case KindString:
 		parsed, ok := sleepParseLong(value)
 		if ok {
@@ -1161,11 +1161,11 @@ func sleepParseLong(value Value) (int64, bool) {
 func sleepFloat64(value Value) float64 {
 	switch value.Kind() {
 	case KindInt:
-		return float64(value.data.(int32))
+		return float64(int32(value.number))
 	case KindLong:
-		return float64(value.data.(int64))
+		return float64(int64(value.number))
 	case KindDouble:
-		return value.data.(float64)
+		return math.Float64frombits(value.number)
 	case KindString:
 		return parseJavaDouble(value.data.(string))
 	case KindObject, KindFunction:

@@ -2268,10 +2268,7 @@ func (f *fiber) callExpressionArguments(ctx context.Context, call *ast.CallExpr)
 }
 
 func (f *fiber) callArgumentsGrouped(ctx context.Context, expressions []ast.Expr, groupLengths []int) ([]Argument, error) {
-	// A single argument has no cross-group ordering to reconstruct. This is the
-	// dominant Sleep-to-Sleep call shape and avoids allocating the temporary
-	// group-offset and evaluation slices used by the general parameter-term
-	// algorithm below.
+	// A single argument needs neither group validation nor reordering.
 	if len(expressions) == 1 {
 		argument, err := f.callArgument(ctx, expressions[0])
 		if err != nil {
@@ -2279,38 +2276,40 @@ func (f *fiber) callArgumentsGrouped(ctx context.Context, expressions []ast.Expr
 		}
 		return []Argument{argument}, nil
 	}
-	groups := normalizedCallArgumentGroups(len(expressions), groupLengths)
-	starts := make([]int, len(groups))
-	offset := 0
-	for index, length := range groups {
-		starts[index] = offset
-		offset += length
+	groups := groupLengths
+	if len(groups) != 0 {
+		groups = normalizedCallArgumentGroups(len(expressions), groups)
+	}
+	arguments := make([]Argument, len(expressions))
+	// Ordinary comma-delimited arguments retain source order after their
+	// right-to-left evaluation. Store each argument directly in its final slot,
+	// retaining its live scalar reference rather than resolving it early.
+	if len(groups) == 0 || len(groups) == len(expressions) {
+		for index := len(expressions) - 1; index >= 0; index-- {
+			argument, err := f.callArgument(ctx, expressions[index])
+			if err != nil {
+				return nil, err
+			}
+			arguments[index] = argument
+		}
+		return arguments, nil
 	}
 
-	evaluated := make([]Argument, len(expressions))
 	// CodeGenerator evaluates comma-delimited parameter terms right-to-left,
 	// but evaluates the omitted-comma ideas within each term left-to-right.
+	// The bridge observes each term in reverse order; fill those destination
+	// slots during evaluation instead of copying a second argument slice.
+	end := len(expressions)
 	for group := len(groups) - 1; group >= 0; group-- {
-		start := starts[group]
-		end := start + groups[group]
+		start := end - groups[group]
 		for index := start; index < end; index++ {
 			argument, err := f.callArgument(ctx, expressions[index])
 			if err != nil {
 				return nil, err
 			}
-			evaluated[index] = argument
+			arguments[start+end-1-index] = argument
 		}
-	}
-
-	// Function bridges pop the shared frame. Consequently ideas from one
-	// omitted-comma term are observed in reverse order, while comma-delimited
-	// terms retain source order.
-	arguments := make([]Argument, 0, len(expressions))
-	for group, length := range groups {
-		start := starts[group]
-		for index := start + length - 1; index >= start; index-- {
-			arguments = append(arguments, evaluated[index])
-		}
+		end = start
 	}
 	return arguments, nil
 }
@@ -2821,32 +2820,36 @@ func (f *fiber) invokeNamed(ctx context.Context, callExpr *ast.CallExpr, name st
 			value = runtime.permeateResultWithDescription(ctx, value, taintedDescription, span)
 		}
 	}
-	var leak *localScopeLeakError
-	if errors.As(err, &leak) {
-		f.closure.script.runtime.writeWarning(leak.Error(), span)
-		value, err = Null(), nil
-	}
-	var thrown *scriptThrow
-	if errors.As(err, &thrown) {
-		frame := formatCall(name, nil)
-		if scriptClosure, ok := f.closure.script.resolveFunction(name).(*scriptClosure); ok && scriptClosure.inline {
-			frame = "<inline> " + frame
+	if err != nil {
+		var leak *localScopeLeakError
+		if errors.As(err, &leak) {
+			f.closure.script.runtime.writeWarning(leak.Error(), span)
+			value, err = Null(), nil
 		}
-		if span.Source != "" {
-			frame = fmt.Sprintf("   %s:%d %s", span.Source, sleepDisplayLine(span), frame)
+		var thrown *scriptThrow
+		if errors.As(err, &thrown) {
+			frame := formatCall(name, nil)
+			if scriptClosure, ok := f.closure.script.resolveFunction(name).(*scriptClosure); ok && scriptClosure.inline {
+				frame = "<inline> " + frame
+			}
+			if span.Source != "" {
+				frame = fmt.Sprintf("   %s:%d %s", span.Source, sleepDisplayLine(span), frame)
+			}
+			thrown.addFrame(frame)
 		}
-		thrown.addFrame(frame)
 	}
 	traceErr := err
-	var returned *inlineReturn
-	var yielded *inlineYield
-	var controlled *loopControl
-	if errors.As(err, &returned) {
-		value, traceErr = returned.value, nil
-	} else if errors.As(err, &yielded) {
-		value, traceErr = yielded.value, nil
-	} else if errors.As(err, &controlled) {
-		value, traceErr = Null(), nil
+	if err != nil {
+		var returned *inlineReturn
+		var yielded *inlineYield
+		var controlled *loopControl
+		if errors.As(err, &returned) {
+			value, traceErr = returned.value, nil
+		} else if errors.As(err, &yielded) {
+			value, traceErr = yielded.value, nil
+		} else if errors.As(err, &controlled) {
+			value, traceErr = Null(), nil
+		}
 	}
 	f.flushForkLaunchTraceAfterCall()
 	if traceFrame != nil {
@@ -2878,7 +2881,10 @@ func (f *fiber) invokeCallableAt(ctx context.Context, call *ast.CallExpr, value 
 	if !ok {
 		return Null(), ErrInvalidCallable
 	}
-	traceFrame := f.beginCallTrace(formatClosureCall(value, "", arguments), call.Span())
+	var traceFrame *callTraceFrame
+	if f.callTraceEnabled() {
+		traceFrame = f.beginCallTrace(formatClosureCall(value, "", arguments), call.Span())
+	}
 	runtime := f.closure.script.runtime
 	taintedDescription := ""
 	if runtime.taintMode {
@@ -3070,7 +3076,10 @@ func (f *fiber) evalObjectAt(ctx context.Context, node *ast.ObjectExpr, warningS
 		if runtime.taintMode && target.IsTainted() {
 			taintedInputs = append([]Value{target}, taintedInputs...)
 		}
-		traceFrame := f.beginCallTrace(formatClosureCall(target, message, arguments), node.Span())
+		var traceFrame *callTraceFrame
+		if f.callTraceEnabled() {
+			traceFrame = f.beginCallTrace(formatClosureCall(target, message, arguments), node.Span())
+		}
 		callArguments := arguments
 		if message != "" {
 			callArguments = append(append([]Argument(nil), arguments...), Argument{Name: "$0", Value: String(message)})

@@ -3107,7 +3107,7 @@ func portableEnumerationClosureCall(ctx context.Context, value Value, callable C
 	caller := currentFiber(ctx)
 	span := Span{Source: "<Java>", Start: Position{Line: -1}}
 	var traceFrame *callTraceFrame
-	if caller != nil {
+	if caller != nil && caller.callTraceEnabled() {
 		traceFrame = caller.beginCallTrace(formatClosureCall(value, message, nil), span)
 	}
 

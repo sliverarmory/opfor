@@ -871,11 +871,11 @@ func sleepSocketUnwrapIPLiteral(host string) string {
 func sleepSocketInt32(value Value) int32 {
 	switch value.kind {
 	case KindInt:
-		return value.data.(int32)
+		return int32(value.number)
 	case KindLong:
-		return int32(value.data.(int64))
+		return int32(int64(value.number))
 	case KindDouble:
-		number := value.data.(float64)
+		number := math.Float64frombits(value.number)
 		switch {
 		case math.IsNaN(number):
 			return 0
@@ -904,11 +904,11 @@ func sleepSocketInt32(value Value) int32 {
 func sleepSocketInt64(value Value) int64 {
 	switch value.kind {
 	case KindInt:
-		return int64(value.data.(int32))
+		return int64(int32(value.number))
 	case KindLong:
-		return value.data.(int64)
+		return int64(value.number)
 	case KindDouble:
-		number := value.data.(float64)
+		number := math.Float64frombits(value.number)
 		switch {
 		case math.IsNaN(number):
 			return 0
